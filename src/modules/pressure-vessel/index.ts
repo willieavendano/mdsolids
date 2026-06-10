@@ -138,9 +138,9 @@ const module: ModuleDef = {
     /* ---------- redraw ---------- */
 
     function redraw() {
-      const res = vesselAnalysis(input);
-
-      if (!res) {
+      // vesselAnalysis returns a zeroed result for invalid geometry, so validate
+      // the inputs here to show the correct message instead of a thin-wall warning.
+      if (input.r <= 0 || input.t <= 0) {
         resultsEl.replaceChildren(
           el("p", { class: "warn" }, "⚠ Radius and thickness must be positive."),
         );
@@ -148,6 +148,7 @@ const module: ModuleDef = {
         return;
       }
 
+      const res = vesselAnalysis(input);
       const thickWall = !res.thinWallValid;
       const children: (Node | string)[] = [
         card(

@@ -49,7 +49,7 @@ const module: ModuleDef = {
       resultsEl.replaceChildren(card("Results", ...rows));
 
       drawBar(res.displacements);
-      drawDiagram();
+      drawDiagram(res);
     }
 
     function drawBar(disp: number[]) {
@@ -117,8 +117,7 @@ const module: ModuleDef = {
       ctx.fillText(`u_end = ${fmt(disp[disp.length - 1])}`, W - 140, 14);
     }
 
-    function drawDiagram() {
-      const res = axialAnalysis(segments);
+    function drawDiagram(res: ReturnType<typeof axialAnalysis>) {
       const pts: [number, number][] = [];
       let x = 0;
       segments.forEach((s, i) => {

@@ -103,9 +103,6 @@ const module: ModuleDef = {
         "x",
         "M",
       );
-
-      // -- rebuild load list --
-      renderLoadList();
     }
 
     // ---- diagram helper -------------------------------------------------
@@ -141,6 +138,8 @@ const module: ModuleDef = {
     }
 
     // ---- load list renderer ---------------------------------------------
+    // Rebuilds the load rows; called only on add/remove/type-change, never on a
+    // numeric keystroke (replaceChildren would drop focus from the edited input).
     function renderLoadList() {
       loadListEl.replaceChildren();
 
@@ -251,7 +250,7 @@ const module: ModuleDef = {
                   M: "M" in ld ? ld.M : 10,
                 };
               }
-              redraw();
+              renderLoadList(); // load type changes which fields are shown
             },
           }),
           el("div", { style: "display:flex;flex-wrap:wrap;gap:6px" }, ...fields),
@@ -262,7 +261,7 @@ const module: ModuleDef = {
               style: "margin-top:4px;width:100%",
               onClick: () => {
                 loads.splice(i, 1);
-                redraw();
+                renderLoadList();
               },
             },
             "Remove",
@@ -271,6 +270,7 @@ const module: ModuleDef = {
 
         loadListEl.append(row);
       });
+      redraw();
     }
 
     // ---- build layout ---------------------------------------------------
@@ -307,7 +307,7 @@ const module: ModuleDef = {
           class: "btn",
           onClick: () => {
             loads.push({ type: "point", x: L / 2, P: 100 });
-            redraw();
+            renderLoadList();
           },
         },
         "+ Add Load",
@@ -349,7 +349,7 @@ const module: ModuleDef = {
     );
 
     // initial draw
-    redraw();
+    renderLoadList();
   },
 };
 

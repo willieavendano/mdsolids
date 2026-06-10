@@ -103,13 +103,16 @@ const module: ModuleDef = {
         ctx.stroke();
         ctx.globalAlpha = 1;
       });
-      // centroid marker
-      plot.dot(res.centroidX, res.centroidY, PALETTE.green, 5);
-      plot.label(res.centroidX, res.centroidY, "C", PALETTE.green);
-
-      renderList();
+      // centroid marker (guard against NaN when net area is 0, e.g. all holes)
+      if (Number.isFinite(res.centroidX) && Number.isFinite(res.centroidY)) {
+        plot.dot(res.centroidX, res.centroidY, PALETTE.green, 5);
+        plot.label(res.centroidX, res.centroidY, "C", PALETTE.green);
+      }
     }
 
+    // renderList() rebuilds the shape rows; it is called only when the list
+    // structure changes (add/remove/shape-kind), never on a numeric keystroke —
+    // otherwise replaceChildren would destroy the input being typed in.
     function renderList() {
       listEl.replaceChildren();
       shapes.forEach((s, i) => {
@@ -127,7 +130,7 @@ const module: ModuleDef = {
             ],
             onChange: (v) => {
               s.kind = v as ShapeKind;
-              redraw();
+              renderList(); // shape kind changes which fields/labels are shown
             },
           }),
           numberField({ label: "x", value: s.x, onInput: (v) => ((s.x = v), redraw()) }),
@@ -158,7 +161,7 @@ const module: ModuleDef = {
                 shapes.splice(i, 1);
                 if (shapes.length === 0)
                   shapes.push({ kind: "rectangle", x: 0, y: 0, a: 2, b: 2 });
-                redraw();
+                renderList();
               },
             },
             "Remove",
@@ -166,6 +169,7 @@ const module: ModuleDef = {
         );
         listEl.append(row);
       });
+      redraw();
     }
 
     const controls = el(
@@ -179,7 +183,7 @@ const module: ModuleDef = {
           class: "btn",
           onClick: () => {
             shapes.push({ kind: "rectangle", x: 0, y: 0, a: 2, b: 2 });
-            redraw();
+            renderList();
           },
         },
         "+ Add shape",
@@ -195,7 +199,7 @@ const module: ModuleDef = {
       el("div", {}, controls, resultsEl),
       el("div", {}, canvas),
     );
-    redraw();
+    renderList();
   },
 };
 

@@ -108,10 +108,10 @@ const module: ModuleDef = {
           .clear()
           .axes("Position (len)", "Torque (force·len)");
       }
-
-      renderList();
     }
 
+    // Rebuilds the segment rows; called only on add/remove, never on a numeric
+    // keystroke (replaceChildren would drop focus from the input being edited).
     function renderList() {
       listEl.replaceChildren();
       segments.forEach((s, i) => {
@@ -177,7 +177,7 @@ const module: ModuleDef = {
                 if (segments.length === 0) {
                   segments.push({ L: 12, G: 1, do: 4, di: 0, T: 100 });
                 }
-                redraw();
+                renderList();
               },
             },
             "Remove",
@@ -185,6 +185,7 @@ const module: ModuleDef = {
         );
         listEl.append(row);
       });
+      redraw();
     }
 
     const controls = el(
@@ -198,7 +199,7 @@ const module: ModuleDef = {
           class: "btn",
           onClick: () => {
             segments.push({ L: 5, G: 1, do: 3, di: 0, T: 50 });
-            redraw();
+            renderList();
           },
         },
         "+ Add segment",
@@ -215,7 +216,7 @@ const module: ModuleDef = {
       el("div", {}, controls, resultsEl),
       el("div", {}, canvas),
     );
-    redraw();
+    renderList();
   },
 };
 

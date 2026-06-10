@@ -10,6 +10,9 @@
  */
 export function solveLinearSystem(A: number[][], b: number[]): number[] | null {
   const n = b.length;
+  // Require a square n×n system; a non-square A would otherwise read undefined
+  // entries and silently propagate NaN instead of signalling failure.
+  if (A.length !== n || A.some((row) => row.length !== n)) return null;
   // Work on copies so callers keep their inputs.
   const M = A.map((row) => row.slice());
   const x = b.slice();

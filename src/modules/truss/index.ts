@@ -86,6 +86,10 @@ const module: ModuleDef = {
     }
 
     function drawTruss(res: ReturnType<typeof analyzeTruss>) {
+      if (nodes.length === 0) {
+        plot.setBounds({ xMin: 0, xMax: 1, yMin: 0, yMax: 1 }).clear().axes("x", "y");
+        return;
+      }
       const xs = nodes.map((n) => n.x);
       const ys = nodes.map((n) => n.y);
       const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 1);
