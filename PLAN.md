@@ -30,12 +30,12 @@ mechanics-of-materials toolkit, deployed to GitHub Pages.
 5. ⏳ `/code-review` pass → refactor.
 6. ⏳ GitHub Actions → GitHub Pages deploy.
 
-## Modules & status
-- [x] Section Properties (reference)
-- [ ] Axial Deformation
-- [ ] Torsion
-- [ ] Beam Diagrams
-- [ ] Truss Analysis
-- [ ] Column Buckling
-- [ ] Stress Transformation / Mohr's circle
-- [ ] Pressure Vessels
+## Modules & status — all 8 complete (54 unit tests passing)
+- [x] Section Properties (reference, Claude)
+- [x] Axial Deformation (Hermes compute+tests, Claude UI)
+- [x] Torsion (Hermes)
+- [x] Beam Diagrams (Hermes)
+- [x] Truss Analysis (Hermes compute+tests, Claude UI)
+- [x] Column Buckling (Hermes)
+- [x] Stress Transformation / Mohr's circle (Hermes)
+- [x] Pressure Vessels (Hermes)
