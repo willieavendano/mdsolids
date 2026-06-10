@@ -58,6 +58,22 @@ PRs welcome — add a module, improve the physics, or expand the test coverage.
 Follow the contract, keep `compute.ts` pure and tested, and run `npm run build`
 + `npm test` before opening a PR.
 
+## The original MDSolids
+
+This project is inspired by **MDSolids**, the Windows educational software for
+Mechanics of Materials created by **Dr. Timothy A. Philpot** (Missouri University
+of Science and Technology), winner of the 1998 Premier Award for Excellence in
+Engineering Education Courseware.
+
+- 🪟 **Original MDSolids:** https://static-archives.git-pages.mst.edu/mdsolids/
+- 📘 Companion textbook: *Mechanics of Materials: An Integrated Learning System* by T.A. Philpot
+- 🎞️ Related: [MecMovies](https://web.mst.edu/~mecmovie/)
+
+MDSolids Web is an independent, clean-room reimplementation of the *kinds of
+analyses* MDSolids offers. It is **not** affiliated with, endorsed by, or derived
+from the original software or its author — all credit for the original concept and
+its decades of impact on engineering education belongs to Dr. Philpot.
+
 ## License
 
 [MIT](./LICENSE) © 2026 Willie Avendano. Educational use encouraged.
