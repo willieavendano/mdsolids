@@ -24,6 +24,9 @@ export interface ModuleContext {
 export interface Example {
   title: string;
   state: unknown;
+  /** Unit system the example's values were authored in; the shell switches
+   *  to it on load so the labels match the numbers. */
+  units?: import("./units").UnitSystemId;
 }
 
 export interface ModuleDef {

@@ -39,14 +39,17 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Thin-walled steel tank (SI: mm, MPa)",
+      units: "si",
       state: { p: 1.5, r: 500, t: 8, type: "cylinder" },
     },
     {
       title: "Spherical propane tank (SI: mm, MPa)",
+      units: "si",
       state: { p: 2, r: 750, t: 12, type: "sphere" },
     },
     {
       title: "Compressed-air cylinder (US: in, psi)",
+      units: "us",
       state: { p: 250, r: 24, t: 0.25, type: "cylinder" },
     },
   ],

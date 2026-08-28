@@ -33,15 +33,32 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) {
     return;
   }
+
+  // Persist a successful response; tied to waitUntil so the worker is not
+  // terminated mid-write, with quota/partial-response rejections swallowed.
+  const store = (res) => {
+    if (res.ok && res.status !== 206) {
+      const copy = res.clone();
+      event.waitUntil(
+        caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {}),
+      );
+    }
+    return res;
+  };
+
+  // Vite's hashed bundles are immutable — cache-first spares a network
+  // round-trip on every repeat load. Everything else is network-first so
+  // deploys show up immediately.
+  if (new URL(req.url).pathname.includes("/assets/")) {
+    event.respondWith(
+      caches.match(req).then((cached) => cached ?? fetch(req).then(store)),
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(req)
-      .then((res) => {
-        if (res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy));
-        }
-        return res;
-      })
+      .then(store)
       .catch(async () => {
         const cached = await caches.match(req);
         if (cached) return cached;

@@ -65,6 +65,7 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Simply supported, center point load (SI: mm, N)",
+      units: "si",
       state: {
         L: 6000,
         beamType: "simply-supported",
@@ -73,6 +74,7 @@ const module: ModuleDef = {
     },
     {
       title: "Simply supported, uniform load (SI: mm, N)",
+      units: "si",
       state: {
         L: 5000,
         beamType: "simply-supported",
@@ -81,6 +83,7 @@ const module: ModuleDef = {
     },
     {
       title: "Cantilever, end point load (US: in, lb)",
+      units: "us",
       state: {
         L: 120,
         beamType: "cantilever",

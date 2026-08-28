@@ -18,17 +18,37 @@ with or derived from the original software.
 | **Axial Deformation** | Normal stress and elongation of segmented axially-loaded bars |
 | **Torsion** | Shear stress and angle of twist in circular shafts |
 | **Beam Diagrams** | Reactions, shear-force & bending-moment diagrams |
+| **Beam Deflection** | Elastic curve, max deflection & slope by numeric integration of M/EI |
 | **Truss Analysis** | Member forces in pin-jointed trusses (method of joints) |
 | **Column Buckling** | Euler critical load, slenderness, buckling stress |
 | **Stress Transformation** | Plane-stress transforms, principal stresses, interactive Mohr's circle |
+| **Strain Transformation** | Plane-strain transforms, principal strains, 45°/60° rosettes |
+| **Combined Loading** | Shaft under axial + torsion + bending → principal stresses |
 | **Pressure Vessels** | Hoop & longitudinal stress in thin-walled vessels |
+
+## Classroom features
+
+- **Shareable links** — every problem's inputs live in the URL. *Copy link* and
+  send a pre-loaded problem to students.
+- **Worked examples** — each module has a *Load example* dropdown with
+  textbook-style input sets.
+- **Save / Open** — download a problem as a small `.json` file and reopen it
+  later (or turn it in).
+- **Unit systems** — toggle input/result labels between generic, SI
+  (mm · N · MPa), and US (in · lb · psi) sets. Labels only; values are never
+  converted, and each set is self-consistent.
+- **Print** — a print-friendly report of the current module (use your
+  browser's *Save as PDF*).
+- **Works offline** — installable PWA; after the first visit it runs without a
+  connection. Usable on phones via the collapsible sidebar.
 
 ## Tech
 
 - **Vite + TypeScript**, zero runtime dependencies — pure DOM + `<canvas>`.
 - Dracula Pro (Van Helsing) theme.
 - Pure compute functions are unit-tested with **Vitest** against textbook values.
-- Static site, deployed to **GitHub Pages** via GitHub Actions.
+- Static site with hash routing — deploys anywhere (GitHub Pages via Actions,
+  Vercel, any static host).
 
 ## Develop
 

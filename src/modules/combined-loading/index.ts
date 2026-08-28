@@ -56,6 +56,7 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Solid drive shaft: T + M (SI: mm, N)",
+      units: "si",
       state: {
         shape: "solid",
         do: 60,
@@ -67,6 +68,7 @@ const module: ModuleDef = {
     },
     {
       title: "Tension + torsion shaft (SI: mm, N)",
+      units: "si",
       state: {
         shape: "solid",
         do: 50,
@@ -78,6 +80,7 @@ const module: ModuleDef = {
     },
     {
       title: "Hollow shaft: full combined loading (SI: mm, N)",
+      units: "si",
       state: {
         shape: "hollow",
         do: 80,
@@ -244,7 +247,13 @@ const module: ModuleDef = {
       onChange: (v) => {
         state.shape = v as ShaftShape;
         if (state.shape === "solid") state.di = 0;
-        if (diField) diField.style.display = state.shape === "hollow" ? "" : "none";
+        if (diField) {
+          diField.style.display = state.shape === "hollow" ? "" : "none";
+          // Keep the visible field in sync — switching solid→hollow must not
+          // show a stale dᵢ while computing with state.di = 0.
+          const input = diField.querySelector("input");
+          if (input) input.value = String(state.di);
+        }
         redraw();
       },
     });

@@ -48,6 +48,7 @@ const module: ModuleDef = {
   examples: [
     {
       title: "T-beam composite (SI: mm)",
+      units: "si",
       state: {
         shapes: [
           { kind: "rectangle", x: -90, y: 180, a: 200, b: 20 },
@@ -57,6 +58,7 @@ const module: ModuleDef = {
     },
     {
       title: "Rectangular tube with hole (SI: mm)",
+      units: "si",
       state: {
         shapes: [
           { kind: "rectangle", x: 0, y: 0, a: 100, b: 150 },
@@ -66,6 +68,7 @@ const module: ModuleDef = {
     },
     {
       title: "L-shaped angle bracket (SI: mm)",
+      units: "si",
       state: {
         shapes: [
           { kind: "rectangle", x: 0, y: 0, a: 100, b: 20 },

@@ -73,6 +73,7 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Simple triangle truss (SI: mm, N)",
+      units: "si",
       state: {
         nodes: [
           { id: "A", x: 0, y: 0, support: "pin", load: { fx: 0, fy: 0 } },
@@ -88,6 +89,7 @@ const module: ModuleDef = {
     },
     {
       title: "5-node Warren truss (SI: mm, N)",
+      units: "si",
       state: {
         nodes: [
           { id: "A", x: 0, y: 0, support: "pin", load: { fx: 0, fy: 0 } },
@@ -109,6 +111,7 @@ const module: ModuleDef = {
     },
     {
       title: "Simple triangle truss (US: in, lb)",
+      units: "us",
       state: {
         nodes: [
           { id: "A", x: 0, y: 0, support: "pin", load: { fx: 0, fy: 0 } },

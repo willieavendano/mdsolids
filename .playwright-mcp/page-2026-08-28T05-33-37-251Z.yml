@@ -1,0 +1,149 @@
+- generic [ref=e2]:
+  - link "Skip to content" [ref=e3] [cursor=pointer]:
+    - /url: "#content"
+  - generic [ref=e4]:
+    - navigation "Modules" [ref=e5]:
+      - link "△ MDSolids Web" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: △
+        - generic [ref=e8]: MDSolids Web
+      - generic [ref=e9]: Geometry
+      - link "Section Properties" [ref=e10] [cursor=pointer]:
+        - /url: "#/section-properties"
+        - generic [ref=e11]: ▦
+        - text: Section Properties
+      - generic [ref=e12]: Axial & Torsion
+      - link "Axial Deformation" [ref=e13] [cursor=pointer]:
+        - /url: "#/axial"
+        - generic [ref=e14]: 🔩
+        - text: Axial Deformation
+      - link "Torsion" [ref=e15] [cursor=pointer]:
+        - /url: "#/torsion"
+        - generic [ref=e16]: 🌀
+        - text: Torsion
+      - generic [ref=e17]: Beams
+      - link "Beam Diagrams" [ref=e18] [cursor=pointer]:
+        - /url: "#/beam"
+        - generic [ref=e19]: 📏
+        - text: Beam Diagrams
+      - link "Beam Deflection" [ref=e20] [cursor=pointer]:
+        - /url: "#/beam-deflection"
+        - generic [ref=e21]: 📉
+        - text: Beam Deflection
+      - generic [ref=e22]: Structures
+      - link "Truss Analysis" [ref=e23] [cursor=pointer]:
+        - /url: "#/truss"
+        - generic [ref=e24]: 🔺
+        - text: Truss Analysis
+      - link "Column Buckling" [ref=e25] [cursor=pointer]:
+        - /url: "#/column"
+        - generic [ref=e26]: 🏛️
+        - text: Column Buckling
+      - generic [ref=e27]: Stress & Strain
+      - link "Stress Transformation" [ref=e28] [cursor=pointer]:
+        - /url: "#/stress-transform"
+        - generic [ref=e29]: ⊕
+        - text: Stress Transformation
+      - link "Strain Transformation" [ref=e30] [cursor=pointer]:
+        - /url: "#/strain-transform"
+        - generic [ref=e31]: 🧭
+        - text: Strain Transformation
+      - link "Combined Loading" [ref=e32] [cursor=pointer]:
+        - /url: "#/combined-loading"
+        - generic [ref=e33]: 🧵
+        - text: Combined Loading
+      - link "Pressure Vessels" [ref=e34] [cursor=pointer]:
+        - /url: "#/pressure-vessel"
+        - generic [ref=e35]: 🛢️
+        - text: Pressure Vessels
+      - link "Open source on GitHub ↗" [ref=e36] [cursor=pointer]:
+        - /url: https://github.com/willieavendano/mdsolids
+    - main [ref=e37]:
+      - generic [ref=e229]:
+        - generic [ref=e230]: 🔩
+        - generic [ref=e231]:
+          - heading "Axial Deformation" [level=2] [ref=e232]
+          - paragraph [ref=e233]: Normal stress and elongation of axially loaded bars and segmented assemblies.
+        - toolbar "Module tools" [ref=e234]:
+          - generic [ref=e235]:
+            - generic [ref=e236]: Examples
+            - combobox "Examples" [ref=e237]:
+              - option "Load example…" [selected]
+              - 'option "Stepped steel bar (SI: mm, N)"'
+              - 'option "Aluminum rod in tension (SI: mm, N)"'
+              - option "Stepped steel bar, US units (in, lb)"
+          - generic [ref=e238]:
+            - generic [ref=e239]: Units
+            - combobox "Units" [ref=e240]:
+              - option "Generic units"
+              - option "SI (mm · N · MPa)" [selected]
+              - option "US (in · lb · psi)"
+          - button "Copy link" [ref=e241] [cursor=pointer]
+          - button "Save" [ref=e242] [cursor=pointer]
+          - button "Open" [ref=e243] [cursor=pointer]
+          - button "Print" [ref=e244] [cursor=pointer]
+      - generic [ref=e245]:
+        - generic [ref=e247]:
+          - heading "Segments (fixed end at left)" [level=3] [ref=e248]
+          - generic [ref=e249]:
+            - generic [ref=e250]:
+              - generic [ref=e251]: Segment 1
+              - generic [ref=e252]:
+                - generic [ref=e253]: Length L
+                - generic [ref=e254]:
+                  - spinbutton "Length L mm" [ref=e255]: "1.5"
+                  - generic [ref=e256]: mm
+              - generic [ref=e257]:
+                - generic [ref=e258]: Area A
+                - generic [ref=e259]:
+                  - spinbutton "Area A mm²" [ref=e260]: "0.5"
+                  - generic [ref=e261]: mm²
+              - generic [ref=e262]:
+                - generic [ref=e263]: Modulus E
+                - generic [ref=e264]:
+                  - spinbutton "Modulus E MPa" [ref=e265]: "200"
+                  - generic [ref=e266]: MPa
+              - generic [ref=e267]:
+                - generic [ref=e268]: Load P at right node (+tension)
+                - generic [ref=e269]:
+                  - spinbutton "Load P at right node (+tension) N" [ref=e270]: "-8"
+                  - generic [ref=e271]: "N"
+              - button "Remove" [ref=e272] [cursor=pointer]
+            - generic [ref=e273]:
+              - generic [ref=e274]: Segment 2
+              - generic [ref=e275]:
+                - generic [ref=e276]: Length L
+                - generic [ref=e277]:
+                  - spinbutton "Length L mm" [ref=e278]: "1"
+                  - generic [ref=e279]: mm
+              - generic [ref=e280]:
+                - generic [ref=e281]: Area A
+                - generic [ref=e282]:
+                  - spinbutton "Area A mm²" [ref=e283]: "0.25"
+                  - generic [ref=e284]: mm²
+              - generic [ref=e285]:
+                - generic [ref=e286]: Modulus E
+                - generic [ref=e287]:
+                  - spinbutton "Modulus E MPa" [ref=e288]: "200"
+                  - generic [ref=e289]: MPa
+              - generic [ref=e290]:
+                - generic [ref=e291]: Load P at right node (+tension)
+                - generic [ref=e292]:
+                  - spinbutton "Load P at right node (+tension) N" [ref=e293]: "12"
+                  - generic [ref=e294]: "N"
+              - button "Remove" [ref=e295] [cursor=pointer]
+          - button "+ Add segment" [ref=e296] [cursor=pointer]
+          - generic [ref=e298]:
+            - heading "Results" [level=3] [ref=e299]
+            - generic [ref=e300]:
+              - generic [ref=e301]: Seg 1
+              - generic [ref=e302]: N=4 N σ=8 MPa δ=0.06 mm
+            - generic [ref=e303]:
+              - generic [ref=e304]: Seg 2
+              - generic [ref=e305]: N=12 N σ=48 MPa δ=0.24 mm
+            - generic [ref=e306]:
+              - generic [ref=e307]: Total elongation
+              - generic [ref=e308]: 0.3 mm
+        - generic [ref=e309]:
+          - img "Bar assembly diagram showing segments and applied loads" [ref=e310]
+          - img "Internal axial force diagram along the bar" [ref=e312]

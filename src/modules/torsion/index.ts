@@ -39,6 +39,7 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Stepped steel shaft (SI: mm, N)",
+      units: "si",
       state: {
         segments: [
           { L: 750, G: 80000, do: 50, di: 0, T: 800000 },
@@ -48,6 +49,7 @@ const module: ModuleDef = {
     },
     {
       title: "Hollow aluminum tube (SI: mm, N)",
+      units: "si",
       state: {
         segments: [{ L: 1200, G: 26000, do: 60, di: 50, T: 400000 }],
       },

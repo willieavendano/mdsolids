@@ -72,14 +72,17 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Plane strain state (με)",
+      units: "generic",
       state: { ...DEFAULT_STATE, mode: "strain", ex: 500, ey: -300, gxy: 600, theta: 0 },
     },
     {
       title: "Rectangular rosette readings (με)",
+      units: "generic",
       state: { ...DEFAULT_STATE, mode: "rosette45", ea: 500, eb: 400, ec: -300 },
     },
     {
       title: "Delta rosette readings (με)",
+      units: "generic",
       state: {
         ...DEFAULT_STATE,
         mode: "rosette60",

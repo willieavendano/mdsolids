@@ -74,6 +74,7 @@ const module: ModuleDef = {
   examples: [
     {
       title: "SS beam, center load (SI: mm, N)",
+      units: "si",
       state: {
         E: 200000,
         I: 8e6,
@@ -85,6 +86,7 @@ const module: ModuleDef = {
     },
     {
       title: "SS beam, full-span UDL (SI: mm, N)",
+      units: "si",
       state: {
         E: 200000,
         I: 8e6,
@@ -96,6 +98,7 @@ const module: ModuleDef = {
     },
     {
       title: "Cantilever, tip load (SI: mm, N)",
+      units: "si",
       state: {
         E: 200000,
         I: 8e6,

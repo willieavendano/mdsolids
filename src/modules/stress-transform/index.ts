@@ -21,7 +21,9 @@ function readState(raw: unknown): StressTransformState | null {
     sx: s.sx as number,
     sy: s.sy as number,
     txy: s.txy as number,
-    theta: s.theta as number,
+    // Keep θ inside the range the slider/field enforce, or a crafted URL
+    // could desync the two controls.
+    theta: Math.max(-180, Math.min(180, s.theta as number)),
   };
 }
 
@@ -41,14 +43,17 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Classic plane-stress state (SI: MPa)",
+      units: "si",
       state: { sx: 80, sy: -20, txy: 25, theta: 0 },
     },
     {
       title: "Pure shear (SI: MPa)",
+      units: "si",
       state: { sx: 0, sy: 0, txy: 40, theta: 0 },
     },
     {
       title: "Uniaxial tension (US: psi)",
+      units: "us",
       state: { sx: 15000, sy: 0, txy: 0, theta: 0 },
     },
   ],

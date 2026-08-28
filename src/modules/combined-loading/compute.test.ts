@@ -220,4 +220,48 @@ describe("combinedLoadingAnalysis", () => {
     expect(r.tauMaxAbsolute).toBe(0);
     expect(r.thetaPdeg).toBe(0);
   });
+
+  it("negative M governs identically to positive M (fiber-symmetric bending)", () => {
+    const pos = combinedLoadingAnalysis({
+      shape: "solid",
+      do: 50,
+      di: 0,
+      P: 80000,
+      T: 5e5,
+      M: 1.5e6,
+    });
+    const neg = combinedLoadingAnalysis({
+      shape: "solid",
+      do: 50,
+      di: 0,
+      P: 80000,
+      T: 5e5,
+      M: -1.5e6,
+    });
+    // The governing fiber sees |M|·c/I stacked with the axial tension either
+    // way — flipping M's sign must not understate the peak stresses.
+    expect(neg.sigmaBend).toBeCloseTo(pos.sigmaBend, 10);
+    expect(neg.sigma1).toBeCloseTo(pos.sigma1, 10);
+    expect(neg.tauMaxAbsolute).toBeCloseTo(pos.tauMaxAbsolute, 10);
+  });
+
+  it("compressive P stacks bending on the compression fiber", () => {
+    // Solid d=50: A = 1963.495 mm², I = 306796.2 mm⁴, c = 25.
+    // σ_axial = -80000/A = -40.744 MPa; σ_bend at governing fiber =
+    // -(1.5e6·25/I) = -122.231 MPa → σx = -162.975 MPa (magnitude, not
+    // the -40.744 + 122.231 = +81.5-ish of the non-governing fiber).
+    const r = combinedLoadingAnalysis({
+      shape: "solid",
+      do: 50,
+      di: 0,
+      P: -80000,
+      T: 0,
+      M: 1.5e6,
+    });
+    expect(r.sigmaAxial).toBeCloseTo(-40.7437, 3);
+    expect(r.sigmaBend).toBeCloseTo(-122.2311, 3);
+    expect(r.sx).toBeCloseTo(-162.9748, 3);
+    expect(r.sigma2).toBeCloseTo(-162.9748, 3);
+    expect(r.sigma1).toBeCloseTo(0, 6);
+  });
 });

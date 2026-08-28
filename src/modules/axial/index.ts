@@ -40,6 +40,7 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Stepped steel bar (SI: mm, N)",
+      units: "si",
       state: {
         segments: [
           { L: 500, A: 300, E: 200000, P: -20000 },
@@ -49,12 +50,14 @@ const module: ModuleDef = {
     },
     {
       title: "Aluminum rod in tension (SI: mm, N)",
+      units: "si",
       state: {
         segments: [{ L: 800, A: 200, E: 70000, P: 15000 }],
       },
     },
     {
       title: "Stepped steel bar, US units (in, lb)",
+      units: "us",
       state: {
         segments: [
           { L: 20, A: 0.75, E: 29000000, P: -4000 },

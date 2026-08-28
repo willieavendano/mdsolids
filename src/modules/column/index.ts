@@ -59,14 +59,17 @@ const module: ModuleDef = {
   examples: [
     {
       title: "Steel pinned-pinned column (SI: mm, N)",
+      units: "si",
       state: { E: 200000, I: 8490000, A: 9880, L: 6000, K: 1, sigmaY: 250 },
     },
     {
       title: "Steel fixed-free column (SI: mm, N)",
+      units: "si",
       state: { E: 200000, I: 2500000, A: 4500, L: 3500, K: 2, sigmaY: 250 },
     },
     {
       title: "Steel fixed-fixed column (US: in, lb)",
+      units: "us",
       state: { E: 29000000, I: 100, A: 10, L: 120, K: 0.5, sigmaY: 36000 },
     },
   ],

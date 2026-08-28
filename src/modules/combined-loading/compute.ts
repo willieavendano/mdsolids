@@ -4,9 +4,12 @@
  *
  * A circular shaft (solid or hollow) carries an axial force P (tension
  * positive), a torque T, and a bending moment M simultaneously. We evaluate
- * the plane-stress state at the outer surface, at the extreme fiber where
- * the axial and bending normal stresses ADD (the "tension side" of bending),
- * since that point governs failure.
+ * the plane-stress state at the outer surface, at the extreme fiber that
+ * GOVERNS — bending stress is ±|M|·c/I at the two extreme fibers, so the
+ * governing fiber is the one where it stacks with (same sign as) the axial
+ * stress, maximizing |σx|. With tension this is the bending-tension side;
+ * with compression, the bending-compression side. M's sign therefore never
+ * reduces the reported stresses.
  *
  *   A = π/4·(do² − di²)                    cross-sectional area
  *   I = π/64·(do⁴ − di⁴)                   second moment of area (bending)
@@ -65,7 +68,8 @@ export interface CombinedLoadingResult {
   c: number;
   /** Normal stress from axial force alone. */
   sigmaAxial: number;
-  /** Normal stress from bending alone, at the outer tension fiber. */
+  /** Normal stress from bending alone at the governing fiber (signed to
+   *  stack with the axial stress; magnitude |M|·c/I). */
   sigmaBend: number;
   /** Shear stress from torsion alone, at the outer surface. */
   tauTorsion: number;
@@ -120,7 +124,9 @@ export function combinedLoadingAnalysis(
   const c = doOuter / 2;
 
   const sigmaAxial = input.P / A;
-  const sigmaBend = (input.M * c) / I;
+  // Bending is fiber-symmetric (±|M|c/I); analyze the governing fiber, where
+  // it carries the same sign as the axial stress so |σx| is maximized.
+  const sigmaBend = (Math.abs(input.M) * c) / I * (sigmaAxial < 0 ? -1 : 1);
   const tauTorsion = (input.T * c) / J;
 
   const sx = sigmaAxial + sigmaBend;

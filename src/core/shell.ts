@@ -15,33 +15,69 @@ import { setUnitSystem, unitSystem, UNIT_SYSTEMS, type UnitSystemId } from "./un
  * URL (debounced, via replaceState so history stays clean).
  */
 export function startApp(root: HTMLElement): void {
-  const content = el("main", { class: "content", id: "content" });
+  const content = el("main", { class: "content", id: "content", tabindex: "-1" });
   const sidebar = buildSidebar();
   const layout = el("div", { class: "layout" }, sidebar, content);
   root.append(
-    el("a", { class: "skip-link", href: "#content" }, "Skip to content"),
+    // Plain #content would be swallowed by the hash router, so focus directly.
+    el(
+      "a",
+      {
+        class: "skip-link",
+        href: "#content",
+        onClick: (e: Event) => {
+          e.preventDefault();
+          content.focus();
+        },
+      },
+      "Skip to content",
+    ),
     buildTopbar(layout),
     layout,
   );
 
-  // Close the mobile drawer when a nav link is chosen.
-  sidebar.addEventListener("click", (e) => {
-    if ((e.target as HTMLElement).closest("a")) layout.classList.remove("nav-open");
-  });
-
   let cleanup: (() => void) | void;
   let lastState: unknown;
+  let currentId = "";
   let urlTimer: number | undefined;
+
+  const cancelPendingUrl = () => {
+    if (urlTimer !== undefined) clearTimeout(urlTimer);
+    urlTimer = undefined;
+  };
+
+  // Write the freshest reported state into the URL immediately. Must run
+  // before any deliberate remount/copy, or edits made inside the debounce
+  // window would be silently lost.
+  const flushStateToUrl = () => {
+    cancelPendingUrl();
+    if (currentId && lastState !== undefined) {
+      history.replaceState(null, "", buildHash(currentId, lastState));
+    }
+  };
+
+  sidebar.addEventListener("click", (e) => {
+    const link = (e.target as HTMLElement).closest("a");
+    if (!link) return;
+    // Close the mobile drawer when a nav link is chosen.
+    layout.classList.remove("nav-open");
+    // Re-clicking the active module is a no-op — navigating to the bare
+    // #/<id> would otherwise wipe the user's in-progress inputs.
+    if ((link as HTMLElement).dataset.id && (link as HTMLElement).dataset.id === currentId) {
+      e.preventDefault();
+    }
+  });
 
   const renderRoute = () => {
     if (typeof cleanup === "function") cleanup();
     cleanup = undefined;
-    if (urlTimer !== undefined) clearTimeout(urlTimer);
+    cancelPendingUrl();
     lastState = undefined;
     clear(content);
 
     const { id, state } = parseHash(location.hash);
     const mod = id ? moduleById(id) : undefined;
+    currentId = mod ? mod.id : "";
 
     // Highlight active nav item.
     sidebar.querySelectorAll(".nav-item").forEach((n) => {
@@ -67,7 +103,12 @@ export function startApp(root: HTMLElement): void {
           el("h2", {}, mod.title),
           el("p", { class: "module-sub" }, mod.description),
         ),
-        buildToolbar(mod, () => lastState, renderRoute),
+        buildToolbar(mod, {
+          getState: () => lastState,
+          flushStateToUrl,
+          cancelPendingUrl,
+          remount: renderRoute,
+        }),
       ),
     );
 
@@ -89,29 +130,44 @@ export function startApp(root: HTMLElement): void {
   renderRoute();
 }
 
+interface ToolbarCtl {
+  getState: () => unknown;
+  /** Immediately mirror the freshest reported state into the URL. */
+  flushStateToUrl: () => void;
+  /** Drop any pending debounced URL write (about to replace the hash). */
+  cancelPendingUrl: () => void;
+  remount: () => void;
+}
+
 /** Examples / units / share / save / open / print controls for a module. */
-function buildToolbar(
-  mod: ModuleDef,
-  getState: () => unknown,
-  remount: () => void,
-): HTMLElement {
+function buildToolbar(mod: ModuleDef, ctl: ToolbarCtl): HTMLElement {
   const bar = el("div", { class: "toolbar", role: "toolbar", "aria-label": "Module tools" });
 
   if (mod.examples && mod.examples.length > 0) {
-    bar.append(
-      selectField({
-        label: "Examples",
-        value: "",
-        options: [
-          { value: "", label: "Load example…" },
-          ...mod.examples.map((ex, i) => ({ value: String(i), label: ex.title })),
-        ],
-        onChange: (v) => {
-          const ex = mod.examples?.[Number(v)];
-          if (ex) location.hash = buildHash(mod.id, ex.state);
-        },
-      }),
-    );
+    const exampleSelect = selectField({
+      label: "Examples",
+      value: "",
+      options: [
+        { value: "", label: "Load example…" },
+        ...mod.examples.map((ex, i) => ({ value: String(i), label: ex.title })),
+      ],
+      onChange: (v) => {
+        if (v === "") return; // placeholder re-selected — not example 0
+        const ex = mod.examples?.[Number(v)];
+        if (!ex) return;
+        // Reset to the placeholder so the same example can be re-loaded later
+        // (re-selecting an already-selected option fires no change event).
+        exampleSelect.querySelector("select")!.value = "";
+        if (ex.units) setUnitSystem(ex.units);
+        // Cancel the debounced write: it would otherwise fire between setting
+        // the hash and the async hashchange render, restoring the old state.
+        ctl.cancelPendingUrl();
+        const target = buildHash(mod.id, ex.state);
+        if (location.hash === target) ctl.remount();
+        else location.hash = target;
+      },
+    });
+    bar.append(exampleSelect);
   }
 
   bar.append(
@@ -122,8 +178,10 @@ function buildToolbar(
       onChange: (v) => {
         setUnitSystem(v as UnitSystemId);
         // Re-mount so unit labels refresh; state survives via the URL, which
-        // reportState keeps current. Values are labels-only, never converted.
-        remount();
+        // must be flushed first or sub-debounce edits would be lost. Values
+        // are labels-only, never converted.
+        ctl.flushStateToUrl();
+        ctl.remount();
       },
     }),
   );
@@ -133,9 +191,7 @@ function buildToolbar(
     {
       class: "btn secondary",
       onClick: async () => {
-        // Flush any pending state into the URL before copying.
-        const s = getState();
-        if (s !== undefined) history.replaceState(null, "", buildHash(mod.id, s));
+        ctl.flushStateToUrl();
         try {
           await navigator.clipboard.writeText(location.href);
           copyBtn.textContent = "Copied ✓";
@@ -153,7 +209,7 @@ function buildToolbar(
     {
       class: "btn secondary",
       onClick: () => {
-        const file = makeSaveFile(mod.id, getState() ?? null);
+        const file = makeSaveFile(mod.id, ctl.getState() ?? null);
         const blob = new Blob([JSON.stringify(file, null, 2)], {
           type: "application/json",
         });
@@ -180,8 +236,9 @@ function buildToolbar(
         alert("Not a valid MDSolids Web save file.");
         return;
       }
+      ctl.cancelPendingUrl();
       const target = buildHash(saved.module, saved.state);
-      if (location.hash === target) remount();
+      if (location.hash === target) ctl.remount();
       else location.hash = target;
     },
   });

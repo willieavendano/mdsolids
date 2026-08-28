@@ -1,0 +1,140 @@
+- generic [ref=e2]:
+  - link "Skip to content" [ref=e3] [cursor=pointer]:
+    - /url: "#content"
+  - generic [ref=e4]:
+    - navigation "Modules" [ref=e5]:
+      - link "△ MDSolids Web" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: △
+        - generic [ref=e8]: MDSolids Web
+      - generic [ref=e9]: Geometry
+      - link "Section Properties" [ref=e10] [cursor=pointer]:
+        - /url: "#/section-properties"
+        - generic [ref=e11]: ▦
+        - text: Section Properties
+      - generic [ref=e12]: Axial & Torsion
+      - link "Axial Deformation" [ref=e13] [cursor=pointer]:
+        - /url: "#/axial"
+        - generic [ref=e14]: 🔩
+        - text: Axial Deformation
+      - link "Torsion" [ref=e15] [cursor=pointer]:
+        - /url: "#/torsion"
+        - generic [ref=e16]: 🌀
+        - text: Torsion
+      - generic [ref=e17]: Beams
+      - link "Beam Diagrams" [ref=e18] [cursor=pointer]:
+        - /url: "#/beam"
+        - generic [ref=e19]: 📏
+        - text: Beam Diagrams
+      - link "Beam Deflection" [ref=e20] [cursor=pointer]:
+        - /url: "#/beam-deflection"
+        - generic [ref=e21]: 📉
+        - text: Beam Deflection
+      - generic [ref=e22]: Structures
+      - link "Truss Analysis" [ref=e23] [cursor=pointer]:
+        - /url: "#/truss"
+        - generic [ref=e24]: 🔺
+        - text: Truss Analysis
+      - link "Column Buckling" [ref=e25] [cursor=pointer]:
+        - /url: "#/column"
+        - generic [ref=e26]: 🏛️
+        - text: Column Buckling
+      - generic [ref=e27]: Stress & Strain
+      - link "Stress Transformation" [ref=e28] [cursor=pointer]:
+        - /url: "#/stress-transform"
+        - generic [ref=e29]: ⊕
+        - text: Stress Transformation
+      - link "Strain Transformation" [ref=e30] [cursor=pointer]:
+        - /url: "#/strain-transform"
+        - generic [ref=e31]: 🧭
+        - text: Strain Transformation
+      - link "Combined Loading" [ref=e32] [cursor=pointer]:
+        - /url: "#/combined-loading"
+        - generic [ref=e33]: 🧵
+        - text: Combined Loading
+      - link "Pressure Vessels" [ref=e34] [cursor=pointer]:
+        - /url: "#/pressure-vessel"
+        - generic [ref=e35]: 🛢️
+        - text: Pressure Vessels
+      - link "Open source on GitHub ↗" [ref=e36] [cursor=pointer]:
+        - /url: https://github.com/willieavendano/mdsolids
+    - main [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e39]: 🌀
+        - generic [ref=e40]:
+          - heading "Torsion" [level=2] [ref=e41]
+          - paragraph [ref=e42]: Shear stress and angle of twist in circular shafts and stepped assemblies.
+        - toolbar "Module tools" [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: Examples
+            - combobox "Examples" [ref=e46]:
+              - option "Load example…" [selected]
+              - 'option "Stepped steel shaft (SI: mm, N)"'
+              - 'option "Hollow aluminum tube (SI: mm, N)"'
+          - generic [ref=e47]:
+            - generic [ref=e48]: Units
+            - combobox "Units" [ref=e49]:
+              - option "Generic units" [selected]
+              - option "SI (mm · N · MPa)"
+              - option "US (in · lb · psi)"
+          - button "Copy link" [ref=e50] [cursor=pointer]
+          - button "Save" [ref=e51] [cursor=pointer]
+          - button "Open" [ref=e52] [cursor=pointer]
+          - button "Print" [ref=e53] [cursor=pointer]
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - heading "Segments" [level=3] [ref=e57]
+            - generic [ref=e59]:
+              - generic [ref=e60]:
+                - generic [ref=e61]: L
+                - generic [ref=e62]:
+                  - spinbutton "L len" [ref=e63]: "12"
+                  - generic [ref=e64]: len
+              - generic [ref=e65]:
+                - generic [ref=e66]: G
+                - generic [ref=e67]:
+                  - spinbutton "G force/len²" [ref=e68]: "1"
+                  - generic [ref=e69]: force/len²
+              - generic [ref=e70]:
+                - generic [ref=e71]: dₒ
+                - generic [ref=e72]:
+                  - spinbutton "dₒ len" [ref=e73]: "4"
+                  - generic [ref=e74]: len
+              - generic [ref=e75]:
+                - generic [ref=e76]: dᵢ (0 = solid)
+                - generic [ref=e77]:
+                  - spinbutton "dᵢ (0 = solid) len" [ref=e78]: "0"
+                  - generic [ref=e79]: len
+              - generic [ref=e80]:
+                - generic [ref=e81]: T
+                - generic [ref=e82]:
+                  - spinbutton "T force·len" [ref=e83]: "100"
+                  - generic [ref=e84]: force·len
+              - button "Remove" [ref=e85] [cursor=pointer]
+            - button "+ Add segment" [ref=e86] [cursor=pointer]
+            - paragraph [ref=e87]: Node 0 is fixed. Torque Tᵢ is applied at node i (right-hand positive).
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - heading "Segment 1" [level=3] [ref=e90]
+              - generic [ref=e91]:
+                - generic [ref=e92]: J
+                - generic [ref=e93]: 25.13 len⁴
+              - generic [ref=e94]:
+                - generic [ref=e95]: T_internal
+                - generic [ref=e96]: 100 force·len
+              - generic [ref=e97]:
+                - generic [ref=e98]: τ_max
+                - generic [ref=e99]: 7.958 force/len²
+              - generic [ref=e100]:
+                - generic [ref=e101]: φ
+                - generic [ref=e102]: 47.75 rad
+            - generic [ref=e103]:
+              - heading "Total Twist" [level=3] [ref=e104]
+              - generic [ref=e105]:
+                - generic [ref=e106]: φ_total
+                - generic [ref=e107]: 47.75 rad
+              - generic [ref=e108]:
+                - generic [ref=e109]: φ_total
+                - generic [ref=e110]: 2736 deg
+        - img "Step plot of internal torque along the shaft" [ref=e112]

@@ -77,7 +77,7 @@ const STORAGE_KEY = "mdsolids.units";
 let current: UnitSystemId = "generic";
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "generic" || saved === "si" || saved === "us") current = saved;
+  if (UNIT_SYSTEMS.some((s) => s.id === saved)) current = saved as UnitSystemId;
 } catch {
   /* private-mode localStorage may throw; keep default */
 }
