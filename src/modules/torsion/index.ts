@@ -1,7 +1,28 @@
-import type { ModuleDef } from "../../core/types";
+import type { ModuleDef, ModuleContext } from "../../core/types";
 import { el, append, card, result as resultRow, fmt, numberField } from "../../core/dom";
 import { Plot, PALETTE } from "../../core/plot";
+import { u } from "../../core/units";
 import { torsionAnalysis, type SegmentInput } from "./compute";
+
+/** Serializable module state (share URLs / save files / examples). */
+interface TorsionState {
+  segments: SegmentInput[];
+}
+
+function readState(raw: unknown): SegmentInput[] | null {
+  const s = raw as Partial<TorsionState> | undefined;
+  if (!s || !Array.isArray(s.segments) || s.segments.length === 0) return null;
+  const ok = s.segments.every(
+    (seg) =>
+      seg &&
+      [seg.L, seg.G, seg.do, seg.di, seg.T].every(
+        (n) => typeof n === "number" && Number.isFinite(n),
+      ),
+  );
+  return ok
+    ? s.segments.map((seg) => ({ L: seg.L, G: seg.G, do: seg.do, di: seg.di, T: seg.T }))
+    : null;
+}
 
 /**
  * Torsion — shear stress and angle of twist in circular shafts and stepped
@@ -15,18 +36,41 @@ const module: ModuleDef = {
     "Shear stress and angle of twist in circular shafts and stepped assemblies.",
   icon: "🌀",
 
-  mount(root) {
-    const segments: SegmentInput[] = [
+  examples: [
+    {
+      title: "Stepped steel shaft (SI: mm, N)",
+      state: {
+        segments: [
+          { L: 750, G: 80000, do: 50, di: 0, T: 800000 },
+          { L: 500, G: 80000, do: 40, di: 0, T: -300000 },
+        ],
+      },
+    },
+    {
+      title: "Hollow aluminum tube (SI: mm, N)",
+      state: {
+        segments: [{ L: 1200, G: 26000, do: 60, di: 50, T: 400000 }],
+      },
+    },
+  ],
+
+  mount(root, ctx?: ModuleContext) {
+    const segments: SegmentInput[] = readState(ctx?.initialState) ?? [
       { L: 12, G: 1, do: 4, di: 0, T: 100 },
     ];
 
     const listEl = el("div", {});
-    const resultsEl = el("div", {});
-    const canvas = el("canvas");
+    const resultsEl = el("div", { "aria-live": "polite" });
+    const canvas = el("canvas", {
+      role: "img",
+      "aria-label": "Step plot of internal torque along the shaft",
+    });
     const plot = new Plot(canvas, 460, 360);
     const warnEl = el("div", { class: "warn", style: "display:none" });
 
     function redraw() {
+      ctx?.reportState({ segments: segments.map((s) => ({ ...s })) });
+
       // ── compute ──────────────────────────────────────────────
       let result;
       try {
@@ -43,10 +87,10 @@ const module: ModuleDef = {
         const segCards = result.segments.map((s, i) =>
           card(
             `Segment ${i + 1}`,
-            resultRow("J", fmt(s.J), "len⁴"),
-            resultRow("T_internal", fmt(s.Tinternal), "force·len"),
-            resultRow("τ_max", fmt(s.tauMax), "force/len²"),
-            resultRow("φ", fmt(s.phi), "rad"),
+            resultRow("J", fmt(s.J), u("inertia")),
+            resultRow("T_internal", fmt(s.Tinternal), u("moment")),
+            resultRow("τ_max", fmt(s.tauMax), u("stress")),
+            resultRow("φ", fmt(s.phi), u("angleRad")),
           ),
         );
 
@@ -88,7 +132,7 @@ const module: ModuleDef = {
             yMax: tMax + tPad,
           })
           .clear()
-          .axes("Position (len)", "Torque (force·len)");
+          .axes(`Position (${u("length")})`, `Torque (${u("moment")})`);
 
         plot.fillToZero(pts, PALETTE.fillPos, PALETTE.fillNeg);
         plot.line(pts, PALETTE.series[0], 2);
@@ -106,7 +150,7 @@ const module: ModuleDef = {
         plot
           .setBounds({ xMin: 0, xMax: 10, yMin: -1, yMax: 1 })
           .clear()
-          .axes("Position (len)", "Torque (force·len)");
+          .axes(`Position (${u("length")})`, `Torque (${u("moment")})`);
       }
     }
 
@@ -120,6 +164,7 @@ const module: ModuleDef = {
           row,
           numberField({
             label: "L",
+            unit: u("length"),
             value: s.L,
             step: 0.1,
             min: 0.001,
@@ -130,6 +175,7 @@ const module: ModuleDef = {
           }),
           numberField({
             label: "G",
+            unit: u("stress"),
             value: s.G,
             step: 0.1,
             min: 0.001,
@@ -140,6 +186,7 @@ const module: ModuleDef = {
           }),
           numberField({
             label: "dₒ",
+            unit: u("length"),
             value: s.do,
             step: 0.1,
             min: 0.001,
@@ -150,6 +197,7 @@ const module: ModuleDef = {
           }),
           numberField({
             label: "dᵢ (0 = solid)",
+            unit: u("length"),
             value: s.di,
             step: 0.1,
             min: 0,
@@ -160,6 +208,7 @@ const module: ModuleDef = {
           }),
           numberField({
             label: "T",
+            unit: u("moment"),
             value: s.T,
             step: 1,
             onInput: (v) => {

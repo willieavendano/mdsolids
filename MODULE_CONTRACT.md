@@ -17,9 +17,47 @@ export interface ModuleDef {
   category: Category;  // "Geometry" | "Axial & Torsion" | "Beams" | "Structures" | "Stress & Strain"
   description: string; // one sentence
   icon: string;        // single emoji/glyph
-  mount(root: HTMLElement): void | (() => void); // render into root; optional cleanup
+  examples?: Example[]; // { title, state } — shown in the shell's Examples dropdown
+  mount(root: HTMLElement, ctx?: ModuleContext): void | (() => void);
+}
+
+export interface ModuleContext {
+  initialState?: unknown;             // restore this state (validate first!)
+  reportState(state: unknown): void;  // call from redraw() with current state
 }
 ```
+
+## State (share URLs / save files / examples)
+
+Each module defines a small JSON-serializable state object holding its inputs
+(e.g. `{ segments: [...] }`). The shell mirrors it into the URL and save files.
+
+- In `mount`, restore from `ctx?.initialState` through a local `readState(raw)`
+  validator that returns `null` unless every field is a finite number of the
+  right shape — never trust the payload (it comes from URLs/files).
+- At the top of `redraw()`, call `ctx?.reportState({...})` with a *copy* of the
+  current inputs.
+- Provide 2–3 `examples` with realistic textbook-style values (state objects in
+  the same schema). Label the titles with the intended unit flavor, e.g.
+  "Stepped steel shaft (SI: mm, N)".
+
+See `src/modules/torsion/index.ts` for the complete pattern.
+
+## Unit labels
+
+Import `u` from `../../core/units` and use it for every input/result unit and
+plot axis label instead of hard-coded strings: `u("length") | "area" |
+"inertia" | "force" | "moment" | "distLoad" | "stress" | "angleRad" |
+"angleDeg" | "strain" | "none"`. The user's unit-system choice (generic / SI /
+US) swaps the labels; values are never converted, so the math must remain
+unit-agnostic as before.
+
+## Accessibility
+
+- Create canvases with `el("canvas", { role: "img", "aria-label": "<what the
+  chart shows>" })`.
+- Wrap the results container with `aria-live="polite"`
+  (`el("div", { "aria-live": "polite" })`).
 
 ## Available helpers — import ONLY from `../../core/*`
 
