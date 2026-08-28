@@ -1,7 +1,29 @@
-import type { ModuleDef } from "../../core/types";
+import type { ModuleDef, ModuleContext } from "../../core/types";
 import { el, card, result, fmt, numberField } from "../../core/dom";
 import { Plot, PALETTE } from "../../core/plot";
+import { u } from "../../core/units";
 import { transform, principal, type StressState } from "./compute";
+
+/** Serializable module state (share URLs / save files / examples). */
+interface StressTransformState extends StressState {
+  /** Rotation angle, in degrees. */
+  theta: number;
+}
+
+function readState(raw: unknown): StressTransformState | null {
+  const s = raw as Partial<StressTransformState> | undefined;
+  if (!s) return null;
+  const nums = [s.sx, s.sy, s.txy, s.theta];
+  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) {
+    return null;
+  }
+  return {
+    sx: s.sx as number,
+    sy: s.sy as number,
+    txy: s.txy as number,
+    theta: s.theta as number,
+  };
+}
 
 /**
  * Stress Transformation — interactive Mohr's circle.
@@ -16,15 +38,45 @@ const module: ModuleDef = {
     "Plane-stress transformation, principal stresses, and an interactive Mohr's circle.",
   icon: "⊕",
 
-  mount(root) {
+  examples: [
+    {
+      title: "Classic plane-stress state (SI: MPa)",
+      state: { sx: 80, sy: -20, txy: 25, theta: 0 },
+    },
+    {
+      title: "Pure shear (SI: MPa)",
+      state: { sx: 0, sy: 0, txy: 40, theta: 0 },
+    },
+    {
+      title: "Uniaxial tension (US: psi)",
+      state: { sx: 15000, sy: 0, txy: 0, theta: 0 },
+    },
+  ],
+
+  mount(root, ctx?: ModuleContext) {
     // ── state ──────────────────────────────────────────────────────
-    const stress: StressState = { sx: 50, sy: 10, txy: 20 };
-    let theta = 0;
+    const state: StressTransformState = readState(ctx?.initialState) ?? {
+      sx: 50,
+      sy: 10,
+      txy: 20,
+      theta: 0,
+    };
+    const stress: StressState = state;
 
     // ── DOM placeholders ───────────────────────────────────────────
     const principalEl = el("div", {});
     const transformedEl = el("div", {});
-    const canvas = el("canvas");
+    const resultsEl = el(
+      "div",
+      { "aria-live": "polite" },
+      principalEl,
+      transformedEl,
+    );
+    const canvas = el("canvas", {
+      role: "img",
+      "aria-label":
+        "Mohr's circle showing the X and Y face points, principal stresses, and the currently rotated stress state",
+    });
     const plot = new Plot(canvas, 480, 400);
 
     // We keep a handle on the range slider so we can sync it on redraw.
@@ -32,28 +84,30 @@ const module: ModuleDef = {
 
     // ── redraw ─────────────────────────────────────────────────────
     function redraw() {
+      ctx?.reportState({ ...state });
+
       const p = principal(stress);
-      const t = transform(stress, theta);
+      const t = transform(stress, state.theta);
 
       // --- results ---
       principalEl.replaceChildren(
         card(
           "Principal Stresses",
-          result("σ₁", fmt(p.sigma1), "stress"),
-          result("σ₂", fmt(p.sigma2), "stress"),
-          result("θₚ", fmt(p.thetaPdeg), "deg"),
-          result("θₛ (max shear)", fmt(p.thetaPdeg - 45), "deg"),
-          result("τ_max", fmt(p.tauMax), "stress"),
-          result("σ_avg", fmt(p.avg), "stress"),
+          result("σ₁", fmt(p.sigma1), u("stress")),
+          result("σ₂", fmt(p.sigma2), u("stress")),
+          result("θₚ", fmt(p.thetaPdeg), u("angleDeg")),
+          result("θₛ (max shear)", fmt(p.thetaPdeg - 45), u("angleDeg")),
+          result("τ_max", fmt(p.tauMax), u("stress")),
+          result("σ_avg", fmt(p.avg), u("stress")),
         ),
       );
 
       transformedEl.replaceChildren(
         card(
-          `Transformed at θ = ${fmt(theta, 4)}°`,
-          result("σ_x'", fmt(t.sxp), "stress"),
-          result("σ_y'", fmt(t.syp), "stress"),
-          result("τ_x'y'", fmt(t.txyp), "stress"),
+          `Transformed at θ = ${fmt(state.theta, 4)}°`,
+          result("σ_x'", fmt(t.sxp), u("stress")),
+          result("σ_y'", fmt(t.syp), u("stress")),
+          result("τ_x'y'", fmt(t.txyp), u("stress")),
         ),
       );
 
@@ -61,7 +115,7 @@ const module: ModuleDef = {
       drawCircle(p, t);
 
       // Sync range slider if it exists
-      if (thetaRange) thetaRange.value = String(theta);
+      if (thetaRange) thetaRange.value = String(state.theta);
     }
 
     // ── Mohr's circle drawing ──────────────────────────────────────
@@ -82,7 +136,7 @@ const module: ModuleDef = {
       plot
         .setBounds({ xMin, xMax, yMin: -yExt, yMax: yExt })
         .clear()
-        .axes("σ", "τ", 8);
+        .axes(`σ (${u("stress")})`, `τ (${u("stress")})`, 8);
 
       // ── Mohr's circle (sampled in data space, τ negated for downward-positive) ──
       const N = 240;
@@ -126,14 +180,14 @@ const module: ModuleDef = {
       const rotX = t.sxp;
       const rotY = -t.txyp;
       plot.dot(rotX, rotY, PALETTE.series[2], 5);
-      plot.label(rotX, rotY, `${fmt(theta, 3)}°`, PALETTE.series[2]);
+      plot.label(rotX, rotY, `${fmt(state.theta, 3)}°`, PALETTE.series[2]);
     }
 
     // ── theta control: number field + range slider synchronized ────
     function thetaControl(): HTMLElement {
       const num = el("input", {
         type: "number",
-        value: String(theta),
+        value: String(state.theta),
         step: "1",
         min: "-180",
         max: "180",
@@ -144,7 +198,7 @@ const module: ModuleDef = {
         type: "range",
         min: "-180",
         max: "180",
-        value: String(theta),
+        value: String(state.theta),
         step: "1",
         style: "width:100%;margin-top:2px",
       }) as HTMLInputElement);
@@ -152,21 +206,27 @@ const module: ModuleDef = {
       num.addEventListener("input", () => {
         const v = parseFloat(num.value);
         if (isNaN(v)) return;
-        theta = v;
+        state.theta = v;
         range.value = String(v);
         redraw();
       });
 
       range.addEventListener("input", () => {
-        theta = parseFloat(range.value);
-        num.value = String(theta);
+        state.theta = parseFloat(range.value);
+        num.value = String(state.theta);
         redraw();
       });
 
       return el(
         "div",
         { class: "field-row", style: "flex-direction:column;align-items:stretch" },
-        el("label", {}, el("span", {}, "θ"), num, el("span", { class: "unit" }, "deg")),
+        el(
+          "label",
+          {},
+          el("span", {}, "θ"),
+          num,
+          el("span", { class: "unit" }, u("angleDeg")),
+        ),
         range,
       );
     }
@@ -180,6 +240,7 @@ const module: ModuleDef = {
         numberField({
           label: "σ_x",
           value: stress.sx,
+          unit: u("stress"),
           onInput: (v) => {
             stress.sx = v;
             redraw();
@@ -188,6 +249,7 @@ const module: ModuleDef = {
         numberField({
           label: "σ_y",
           value: stress.sy,
+          unit: u("stress"),
           onInput: (v) => {
             stress.sy = v;
             redraw();
@@ -196,6 +258,7 @@ const module: ModuleDef = {
         numberField({
           label: "τ_xy",
           value: stress.txy,
+          unit: u("stress"),
           onInput: (v) => {
             stress.txy = v;
             redraw();
@@ -203,8 +266,7 @@ const module: ModuleDef = {
         }),
       ),
       card("Rotation", thetaControl()),
-      principalEl,
-      transformedEl,
+      resultsEl,
     );
 
     // ── mount ──────────────────────────────────────────────────────

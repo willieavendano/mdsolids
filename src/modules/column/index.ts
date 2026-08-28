@@ -1,4 +1,4 @@
-import type { ModuleDef } from "../../core/types";
+import type { ModuleDef, ModuleContext } from "../../core/types";
 import {
   el,
   card,
@@ -8,6 +8,7 @@ import {
   selectField,
 } from "../../core/dom";
 import { Plot, PALETTE } from "../../core/plot";
+import { u } from "../../core/units";
 import {
   columnAnalysis,
   transitionSlenderness,
@@ -21,6 +22,32 @@ const endOptions = Object.entries(END_CONDITIONS).map(([name, k]) => ({
   label: `${name}  (K=${k})`,
 }));
 
+const VALID_K = new Set(Object.values(END_CONDITIONS));
+
+/** Serializable module state (share URLs / save files / examples). */
+interface ColumnState extends ColumnInput {
+  /** Yield stress; 0 = not set (elastic Euler curve only). */
+  sigmaY: number;
+}
+
+function readState(raw: unknown): ColumnState | null {
+  const s = raw as Partial<ColumnState> | undefined;
+  if (!s) return null;
+  const nums = [s.E, s.I, s.A, s.L, s.K, s.sigmaY];
+  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) {
+    return null;
+  }
+  if (!VALID_K.has(s.K as number)) return null;
+  return {
+    E: s.E as number,
+    I: s.I as number,
+    A: s.A as number,
+    L: s.L as number,
+    K: s.K as number,
+    sigmaY: s.sigmaY as number,
+  };
+}
+
 const module: ModuleDef = {
   id: "column",
   title: "Column Buckling",
@@ -29,22 +56,43 @@ const module: ModuleDef = {
     "Euler critical load, slenderness, and buckling stress for columns.",
   icon: "🏛️",
 
-  mount(root) {
+  examples: [
+    {
+      title: "Steel pinned-pinned column (SI: mm, N)",
+      state: { E: 200000, I: 8490000, A: 9880, L: 6000, K: 1, sigmaY: 250 },
+    },
+    {
+      title: "Steel fixed-free column (SI: mm, N)",
+      state: { E: 200000, I: 2500000, A: 4500, L: 3500, K: 2, sigmaY: 250 },
+    },
+    {
+      title: "Steel fixed-fixed column (US: in, lb)",
+      state: { E: 29000000, I: 100, A: 10, L: 120, K: 0.5, sigmaY: 36000 },
+    },
+  ],
+
+  mount(root, ctx?: ModuleContext) {
     // --- state ---
-    const state: ColumnInput = {
+    const state: ColumnState = readState(ctx?.initialState) ?? {
       E: 200000,
       I: 1e6,
       A: 1000,
       L: 3000,
       K: 1,
+      sigmaY: 0,
     };
-    let sigmaY = 0; // 0 = not set (elastic Euler only)
 
-    const resultsEl = el("div", {});
-    const canvas = el("canvas");
+    const resultsEl = el("div", { "aria-live": "polite" });
+    const canvas = el("canvas", {
+      role: "img",
+      "aria-label":
+        "Euler buckling curve of critical stress versus slenderness ratio, with the column's operating point and yield stress marked",
+    });
     const plot = new Plot(canvas, 500, 380);
 
     function redraw() {
+      ctx?.reportState({ ...state });
+
       const res = columnAnalysis(state);
 
       const singular =
@@ -59,18 +107,18 @@ const module: ModuleDef = {
         );
       } else {
         children.push(
-          result("Effective length Lₑ", fmt(res.Le), "len"),
-          result("Radius of gyration r", fmt(res.r), "len"),
-          result("Slenderness λ", fmt(res.slenderness), "—"),
-          result("Critical load P_cr", fmt(res.Pcr), "force"),
-          result("Buckling stress σ_cr", fmt(res.sigmaCr), "stress"),
+          result("Effective length Lₑ", fmt(res.Le), u("length")),
+          result("Radius of gyration r", fmt(res.r), u("length")),
+          result("Slenderness λ", fmt(res.slenderness), u("none")),
+          result("Critical load P_cr", fmt(res.Pcr), u("force")),
+          result("Buckling stress σ_cr", fmt(res.sigmaCr), u("stress")),
         );
 
-        if (sigmaY > 0) {
-          const lambdaTrans = transitionSlenderness(state.E, sigmaY);
-          const elastic = res.sigmaCr <= sigmaY;
+        if (state.sigmaY > 0) {
+          const lambdaTrans = transitionSlenderness(state.E, state.sigmaY);
+          const elastic = res.sigmaCr <= state.sigmaY;
           children.push(
-            result("Yield stress σ_Y", fmt(sigmaY), "stress"),
+            result("Yield stress σ_Y", fmt(state.sigmaY), u("stress")),
             el(
               "p",
               { class: elastic ? "note" : "warn" },
@@ -99,7 +147,7 @@ const module: ModuleDef = {
         if (curve.length > 0) {
           const sigmas = curve.map((p) => p.sigmaCr);
           let yMax = Math.max(...sigmas);
-          if (sigmaY > 0) yMax = Math.max(yMax, sigmaY);
+          if (state.sigmaY > 0) yMax = Math.max(yMax, state.sigmaY);
           yMax *= 1.1;
 
           plot
@@ -109,7 +157,7 @@ const module: ModuleDef = {
               yMin: 0,
               yMax,
             })
-            .axes("Slenderness λ", "σ_cr", 7);
+            .axes("Slenderness λ", `σ_cr (${u("stress")})`, 7);
 
           // Euler hyperbola
           plot.line(
@@ -119,16 +167,21 @@ const module: ModuleDef = {
           );
 
           // Yield stress line if set
-          if (sigmaY > 0) {
+          if (state.sigmaY > 0) {
             plot.line(
               [
-                [rmin, sigmaY],
-                [rmax, sigmaY],
+                [rmin, state.sigmaY],
+                [rmax, state.sigmaY],
               ],
               PALETTE.series[2],
               1.5,
             );
-            plot.label(rmin, sigmaY, `σ_Y = ${fmt(sigmaY)}`, PALETTE.series[2]);
+            plot.label(
+              rmin,
+              state.sigmaY,
+              `σ_Y = ${fmt(state.sigmaY)}`,
+              PALETTE.series[2],
+            );
           }
 
           // Column operating point
@@ -163,6 +216,7 @@ const module: ModuleDef = {
       numberField({
         label: "Modulus E",
         value: state.E,
+        unit: u("stress"),
         step: 1000,
         onInput: (v) => {
           state.E = v;
@@ -172,6 +226,7 @@ const module: ModuleDef = {
       numberField({
         label: "Moment of inertia I",
         value: state.I,
+        unit: u("inertia"),
         step: 1000,
         onInput: (v) => {
           state.I = v;
@@ -181,6 +236,7 @@ const module: ModuleDef = {
       numberField({
         label: "Area A",
         value: state.A,
+        unit: u("area"),
         step: 100,
         onInput: (v) => {
           state.A = v;
@@ -190,6 +246,7 @@ const module: ModuleDef = {
       numberField({
         label: "Length L",
         value: state.L,
+        unit: u("length"),
         step: 100,
         onInput: (v) => {
           state.L = v;
@@ -200,10 +257,11 @@ const module: ModuleDef = {
       el("hr", {}),
       numberField({
         label: "Yield stress σ_Y (optional)",
-        value: sigmaY || 0,
+        value: state.sigmaY || 0,
+        unit: u("stress"),
         step: 10,
         onInput: (v) => {
-          sigmaY = v;
+          state.sigmaY = v;
           redraw();
         },
       }),

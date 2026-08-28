@@ -1,7 +1,28 @@
-import type { ModuleDef } from "../../core/types";
+import type { ModuleDef, ModuleContext } from "../../core/types";
 import { el, card, result, fmt, numberField, selectField } from "../../core/dom";
 import { Plot, PALETTE } from "../../core/plot";
+import { u } from "../../core/units";
 import { vesselAnalysis, type VesselInput, type VesselType } from "./compute";
+
+const VALID_TYPES: VesselType[] = ["cylinder", "sphere"];
+
+function readState(raw: unknown): VesselInput | null {
+  const s = raw as Partial<VesselInput> | undefined;
+  if (!s) return null;
+  const nums = [s.p, s.r, s.t];
+  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) {
+    return null;
+  }
+  if (typeof s.type !== "string" || !VALID_TYPES.includes(s.type as VesselType)) {
+    return null;
+  }
+  return {
+    p: s.p as number,
+    r: s.r as number,
+    t: s.t as number,
+    type: s.type as VesselType,
+  };
+}
 
 /**
  * Pressure Vessels — hoop and longitudinal stress in thin-walled
@@ -15,11 +36,35 @@ const module: ModuleDef = {
     "Hoop and longitudinal stress in thin-walled cylindrical and spherical vessels.",
   icon: "🛢️",
 
-  mount(root) {
-    const input: VesselInput = { p: 2, r: 10, t: 0.5, type: "cylinder" };
+  examples: [
+    {
+      title: "Thin-walled steel tank (SI: mm, MPa)",
+      state: { p: 1.5, r: 500, t: 8, type: "cylinder" },
+    },
+    {
+      title: "Spherical propane tank (SI: mm, MPa)",
+      state: { p: 2, r: 750, t: 12, type: "sphere" },
+    },
+    {
+      title: "Compressed-air cylinder (US: in, psi)",
+      state: { p: 250, r: 24, t: 0.25, type: "cylinder" },
+    },
+  ],
 
-    const resultsEl = el("div", {});
-    const canvas = el("canvas");
+  mount(root, ctx?: ModuleContext) {
+    const input: VesselInput = readState(ctx?.initialState) ?? {
+      p: 2,
+      r: 10,
+      t: 0.5,
+      type: "cylinder",
+    };
+
+    const resultsEl = el("div", { "aria-live": "polite" });
+    const canvas = el("canvas", {
+      role: "img",
+      "aria-label":
+        "Cross-section schematic of the pressure vessel wall showing hoop and longitudinal stress directions",
+    });
     const plot = new Plot(canvas, 460, 360);
 
     /* ---------- drawing helper ---------- */
@@ -138,6 +183,8 @@ const module: ModuleDef = {
     /* ---------- redraw ---------- */
 
     function redraw() {
+      ctx?.reportState({ ...input });
+
       // vesselAnalysis returns a zeroed result for invalid geometry, so validate
       // the inputs here to show the correct message instead of a thin-wall warning.
       if (input.r <= 0 || input.t <= 0) {
@@ -153,10 +200,10 @@ const module: ModuleDef = {
       const children: (Node | string)[] = [
         card(
           "Results",
-          result("Hoop stress σ_h", fmt(res.hoop), "force/len²"),
-          result("Longitudinal stress σ_l", fmt(res.longitudinal), "force/len²"),
-          result("Max in-plane shear τ_max,ip", fmt(res.maxInPlaneShear), "force/len²"),
-          result("Abs max shear τ_max,abs", fmt(res.absMaxShear), "force/len²"),
+          result("Hoop stress σ_h", fmt(res.hoop), u("stress")),
+          result("Longitudinal stress σ_l", fmt(res.longitudinal), u("stress")),
+          result("Max in-plane shear τ_max,ip", fmt(res.maxInPlaneShear), u("stress")),
+          result("Abs max shear τ_max,abs", fmt(res.absMaxShear), u("stress")),
           result("r / t ratio", fmt(res.ratioRT, 4)),
         ),
       ];
@@ -179,6 +226,7 @@ const module: ModuleDef = {
       numberField({
         label: "Gauge pressure p",
         value: input.p,
+        unit: u("stress"),
         step: 0.1,
         min: 0,
         onInput: (v: number) => {
@@ -189,6 +237,7 @@ const module: ModuleDef = {
       numberField({
         label: "Inner radius r",
         value: input.r,
+        unit: u("length"),
         step: 0.1,
         min: 0,
         onInput: (v: number) => {
@@ -199,6 +248,7 @@ const module: ModuleDef = {
       numberField({
         label: "Wall thickness t",
         value: input.t,
+        unit: u("length"),
         step: 0.01,
         min: 0,
         onInput: (v: number) => {

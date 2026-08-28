@@ -1,4 +1,4 @@
-import type { ModuleDef } from "../../core/types";
+import type { ModuleDef, ModuleContext } from "../../core/types";
 import {
   el,
   card,
@@ -8,7 +8,47 @@ import {
   selectField,
 } from "../../core/dom";
 import { Plot, PALETTE } from "../../core/plot";
+import { u } from "../../core/units";
 import { analyzeBeam, type Load, type BeamType } from "./compute";
+
+/** Serializable module state (share URLs / save files / examples). */
+interface BeamState {
+  L: number;
+  beamType: BeamType;
+  loads: Load[];
+}
+
+function readState(raw: unknown): BeamState | null {
+  const s = raw as { L?: unknown; beamType?: unknown; loads?: unknown } | undefined;
+  if (!s || typeof s.L !== "number" || !Number.isFinite(s.L)) return null;
+  if (s.beamType !== "simply-supported" && s.beamType !== "cantilever") return null;
+  if (!Array.isArray(s.loads)) return null;
+
+  const isFiniteNum = (n: unknown): n is number =>
+    typeof n === "number" && Number.isFinite(n);
+
+  const loads: Load[] = [];
+  for (const item of s.loads) {
+    const ld = item as Record<string, unknown> | null;
+    if (!ld || typeof ld !== "object") return null;
+    if (ld.type === "point" && isFiniteNum(ld.x) && isFiniteNum(ld.P)) {
+      loads.push({ type: "point", x: ld.x, P: ld.P });
+    } else if (
+      ld.type === "udl" &&
+      isFiniteNum(ld.xStart) &&
+      isFiniteNum(ld.xEnd) &&
+      isFiniteNum(ld.w)
+    ) {
+      loads.push({ type: "udl", xStart: ld.xStart, xEnd: ld.xEnd, w: ld.w });
+    } else if (ld.type === "moment" && isFiniteNum(ld.x) && isFiniteNum(ld.M)) {
+      loads.push({ type: "moment", x: ld.x, M: ld.M });
+    } else {
+      return null;
+    }
+  }
+
+  return { L: s.L, beamType: s.beamType, loads };
+}
 
 /**
  * Beam Diagrams — reactions plus shear-force and bending-moment diagrams
@@ -22,26 +62,66 @@ const module: ModuleDef = {
     "Reactions plus shear-force and bending-moment diagrams for loaded beams.",
   icon: "📏",
 
-  mount(root) {
+  examples: [
+    {
+      title: "Simply supported, center point load (SI: mm, N)",
+      state: {
+        L: 6000,
+        beamType: "simply-supported",
+        loads: [{ type: "point", x: 3000, P: 15000 }],
+      },
+    },
+    {
+      title: "Simply supported, uniform load (SI: mm, N)",
+      state: {
+        L: 5000,
+        beamType: "simply-supported",
+        loads: [{ type: "udl", xStart: 0, xEnd: 5000, w: 8 }],
+      },
+    },
+    {
+      title: "Cantilever, end point load (US: in, lb)",
+      state: {
+        L: 120,
+        beamType: "cantilever",
+        loads: [{ type: "point", x: 120, P: 800 }],
+      },
+    },
+  ],
+
+  mount(root, ctx?: ModuleContext) {
     // ---- state ----------------------------------------------------------
-    let beamType: BeamType = "simply-supported";
-    let L = 10;
-    let loads: Load[] = [{ type: "point", x: 5, P: 100 }];
+    const initial = readState(ctx?.initialState);
+    let beamType: BeamType = initial?.beamType ?? "simply-supported";
+    let L = initial?.L ?? 10;
+    let loads: Load[] = initial?.loads ?? [{ type: "point", x: 5, P: 100 }];
 
     // ---- DOM elements ---------------------------------------------------
-    const resultsEl = el("div");
+    const resultsEl = el("div", { "aria-live": "polite" });
     const loadListEl = el("div");
 
     // Shear diagram canvas
-    const canvasV = el("canvas");
+    const canvasV = el("canvas", {
+      role: "img",
+      "aria-label": "Shear force diagram V of x along the beam",
+    });
     const plotV = new Plot(canvasV, 460, 260);
 
     // Moment diagram canvas
-    const canvasM = el("canvas");
+    const canvasM = el("canvas", {
+      role: "img",
+      "aria-label": "Bending moment diagram M of x along the beam",
+    });
     const plotM = new Plot(canvasM, 460, 260);
 
     // ---- redraw ---------------------------------------------------------
     function redraw() {
+      ctx?.reportState({
+        L,
+        beamType,
+        loads: loads.map((ld) => ({ ...ld })),
+      });
+
       const res = analyzeBeam({ L, type: beamType, loads });
 
       // -- results card --
@@ -49,25 +129,25 @@ const module: ModuleDef = {
 
       if (beamType === "simply-supported") {
         children.push(
-          result("Rₐ", fmt(res.reactions.Ra ?? 0), "force"),
-          result("R_b", fmt(res.reactions.Rb ?? 0), "force"),
+          result("Rₐ", fmt(res.reactions.Ra ?? 0), u("force")),
+          result("R_b", fmt(res.reactions.Rb ?? 0), u("force")),
         );
       } else {
         children.push(
-          result("R", fmt(res.reactions.R ?? 0), "force"),
-          result("Mᵣ", fmt(res.reactions.Mr ?? 0), "force·len"),
+          result("R", fmt(res.reactions.R ?? 0), u("force")),
+          result("Mᵣ", fmt(res.reactions.Mr ?? 0), u("moment")),
         );
       }
 
       children.push(
-        result("Vₘₐₓ", fmt(res.Vmax), "force"),
-        result("at x", fmt(res.VmaxLoc), "len"),
-        result("Vₘᵢₙ", fmt(res.Vmin), "force"),
-        result("at x", fmt(res.VminLoc), "len"),
-        result("Mₘₐₓ", fmt(res.Mmax), "force·len"),
-        result("at x", fmt(res.MmaxLoc), "len"),
-        result("Mₘᵢₙ", fmt(res.Mmin), "force·len"),
-        result("at x", fmt(res.MminLoc), "len"),
+        result("Vₘₐₓ", fmt(res.Vmax), u("force")),
+        result("at x", fmt(res.VmaxLoc), u("length")),
+        result("Vₘᵢₙ", fmt(res.Vmin), u("force")),
+        result("at x", fmt(res.VminLoc), u("length")),
+        result("Mₘₐₓ", fmt(res.Mmax), u("moment")),
+        result("at x", fmt(res.MmaxLoc), u("length")),
+        result("Mₘᵢₙ", fmt(res.Mmin), u("moment")),
+        result("at x", fmt(res.MminLoc), u("length")),
       );
 
       if (res.warnings.length > 0) {
@@ -89,8 +169,8 @@ const module: ModuleDef = {
         L,
         res.Vmin,
         res.Vmax,
-        "x",
-        "V",
+        `x (${u("length")})`,
+        `V (${u("force")})`,
       );
 
       // -- moment diagram --
@@ -100,8 +180,8 @@ const module: ModuleDef = {
         L,
         res.Mmin,
         res.Mmax,
-        "x",
-        "M",
+        `x (${u("length")})`,
+        `M (${u("moment")})`,
       );
     }
 
@@ -156,6 +236,7 @@ const module: ModuleDef = {
           fields.push(
             numberField({
               label: "x",
+              unit: u("length"),
               value: ld.x,
               onInput: (v) => {
                 ld.x = v;
@@ -164,6 +245,7 @@ const module: ModuleDef = {
             }),
             numberField({
               label: "P ↓",
+              unit: u("force"),
               value: ld.P,
               onInput: (v) => {
                 ld.P = v;
@@ -175,6 +257,7 @@ const module: ModuleDef = {
           fields.push(
             numberField({
               label: "xStart",
+              unit: u("length"),
               value: ld.xStart,
               onInput: (v) => {
                 ld.xStart = v;
@@ -183,6 +266,7 @@ const module: ModuleDef = {
             }),
             numberField({
               label: "xEnd",
+              unit: u("length"),
               value: ld.xEnd,
               onInput: (v) => {
                 ld.xEnd = v;
@@ -190,7 +274,8 @@ const module: ModuleDef = {
               },
             }),
             numberField({
-              label: "w ↓/len",
+              label: "w ↓",
+              unit: u("distLoad"),
               value: ld.w,
               onInput: (v) => {
                 ld.w = v;
@@ -202,6 +287,7 @@ const module: ModuleDef = {
           fields.push(
             numberField({
               label: "x",
+              unit: u("length"),
               value: ld.x,
               onInput: (v) => {
                 ld.x = v;
@@ -210,6 +296,7 @@ const module: ModuleDef = {
             }),
             numberField({
               label: "M ↺",
+              unit: u("moment"),
               value: ld.M,
               onInput: (v) => {
                 ld.M = v;
@@ -291,6 +378,7 @@ const module: ModuleDef = {
       }),
       numberField({
         label: "Length L",
+        unit: u("length"),
         value: L,
         step: 0.1,
         min: 0.01,

@@ -1,7 +1,28 @@
-import type { ModuleDef } from "../../core/types";
+import type { ModuleDef, ModuleContext } from "../../core/types";
 import { el, append, card, result, fmt, numberField } from "../../core/dom";
 import { Plot, PALETTE } from "../../core/plot";
+import { u } from "../../core/units";
 import { axialAnalysis, type SegmentInput } from "./compute";
+
+/** Serializable module state (share URLs / save files / examples). */
+interface AxialState {
+  segments: SegmentInput[];
+}
+
+function readState(raw: unknown): SegmentInput[] | null {
+  const s = raw as Partial<AxialState> | undefined;
+  if (!s || !Array.isArray(s.segments) || s.segments.length === 0) return null;
+  const ok = s.segments.every(
+    (seg) =>
+      seg &&
+      [seg.L, seg.A, seg.E, seg.P].every(
+        (n) => typeof n === "number" && Number.isFinite(n),
+      ),
+  );
+  return ok
+    ? s.segments.map((seg) => ({ L: seg.L, A: seg.A, E: seg.E, P: seg.P }))
+    : null;
+}
 
 /**
  * Axial Deformation — a segmented bar fixed at the left end, with an external
@@ -16,19 +37,54 @@ const module: ModuleDef = {
     "Normal stress and elongation of axially loaded bars and segmented assemblies.",
   icon: "🔩",
 
-  mount(root) {
-    const segments: SegmentInput[] = [
+  examples: [
+    {
+      title: "Stepped steel bar (SI: mm, N)",
+      state: {
+        segments: [
+          { L: 500, A: 300, E: 200000, P: -20000 },
+          { L: 300, A: 150, E: 200000, P: 30000 },
+        ],
+      },
+    },
+    {
+      title: "Aluminum rod in tension (SI: mm, N)",
+      state: {
+        segments: [{ L: 800, A: 200, E: 70000, P: 15000 }],
+      },
+    },
+    {
+      title: "Stepped steel bar, US units (in, lb)",
+      state: {
+        segments: [
+          { L: 20, A: 0.75, E: 29000000, P: -4000 },
+          { L: 15, A: 0.4, E: 29000000, P: 6000 },
+        ],
+      },
+    },
+  ],
+
+  mount(root, ctx?: ModuleContext) {
+    const segments: SegmentInput[] = readState(ctx?.initialState) ?? [
       { L: 1.5, A: 0.5, E: 200, P: -8 },
       { L: 1.0, A: 0.25, E: 200, P: 12 },
     ];
 
     const listEl = el("div", {});
-    const resultsEl = el("div", {});
-    const barCanvas = el("canvas");
-    const diagCanvas = el("canvas");
+    const resultsEl = el("div", { "aria-live": "polite" });
+    const barCanvas = el("canvas", {
+      role: "img",
+      "aria-label": "Bar assembly diagram showing segments and applied loads",
+    });
+    const diagCanvas = el("canvas", {
+      role: "img",
+      "aria-label": "Internal axial force diagram along the bar",
+    });
     const diag = new Plot(diagCanvas, 480, 240);
 
     function redraw() {
+      ctx?.reportState({ segments: segments.map((s) => ({ ...s })) });
+
       const bad = segments.some((s) => s.A <= 0 || s.E <= 0 || s.L <= 0);
       const res = axialAnalysis(segments);
 
@@ -41,11 +97,11 @@ const module: ModuleDef = {
           el("div", { class: "result" },
             el("span", { class: "result-label" }, `Seg ${i + 1}`),
             el("span", { class: "result-value" },
-              `N=${fmt(r.N)}  σ=${fmt(r.sigma)}  δ=${fmt(r.delta)}`),
+              `N=${fmt(r.N)} ${u("force")}  σ=${fmt(r.sigma)} ${u("stress")}  δ=${fmt(r.delta)} ${u("length")}`),
           ),
         );
       });
-      rows.push(result("Total elongation", fmt(res.totalElongation), "len"));
+      rows.push(result("Total elongation", fmt(res.totalElongation), u("length")));
       resultsEl.replaceChildren(card("Results", ...rows));
 
       drawBar(res.displacements);
@@ -53,68 +109,68 @@ const module: ModuleDef = {
     }
 
     function drawBar(disp: number[]) {
-      const ctx = barCanvas.getContext("2d");
-      if (!ctx) return;
+      const barCtx = barCanvas.getContext("2d");
+      if (!barCtx) return;
       const dpr = window.devicePixelRatio || 1;
       const W = 480, H = 120;
       barCanvas.style.width = `${W}px`;
       barCanvas.style.height = `${H}px`;
       barCanvas.width = W * dpr;
       barCanvas.height = H * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = PALETTE.bg;
-      ctx.fillRect(0, 0, W, H);
+      barCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      barCtx.fillStyle = PALETTE.bg;
+      barCtx.fillRect(0, 0, W, H);
 
       const total = segments.reduce((s, g) => s + Math.max(g.L, 0), 0) || 1;
       const padL = 30, padR = 20, midY = H / 2;
       const scale = (W - padL - padR) / total;
       // Fixed wall + hatch
-      ctx.strokeStyle = PALETTE.axis;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(padL, midY - 30);
-      ctx.lineTo(padL, midY + 30);
-      ctx.stroke();
+      barCtx.strokeStyle = PALETTE.axis;
+      barCtx.lineWidth = 2;
+      barCtx.beginPath();
+      barCtx.moveTo(padL, midY - 30);
+      barCtx.lineTo(padL, midY + 30);
+      barCtx.stroke();
       for (let y = midY - 30; y < midY + 30; y += 8) {
-        ctx.beginPath();
-        ctx.moveTo(padL, y);
-        ctx.lineTo(padL - 7, y + 7);
-        ctx.stroke();
+        barCtx.beginPath();
+        barCtx.moveTo(padL, y);
+        barCtx.lineTo(padL - 7, y + 7);
+        barCtx.stroke();
       }
 
       let x = padL;
       segments.forEach((s, i) => {
         const w = Math.max(s.L, 0) * scale;
         const h = Math.min(46, 14 + Math.sqrt(Math.max(s.A, 0)) * 18);
-        ctx.fillStyle = PALETTE.series[i % PALETTE.series.length];
-        ctx.globalAlpha = 0.45;
-        ctx.fillRect(x, midY - h / 2, w, h);
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = PALETTE.series[i % PALETTE.series.length];
-        ctx.strokeRect(x, midY - h / 2, w, h);
+        barCtx.fillStyle = PALETTE.series[i % PALETTE.series.length];
+        barCtx.globalAlpha = 0.45;
+        barCtx.fillRect(x, midY - h / 2, w, h);
+        barCtx.globalAlpha = 1;
+        barCtx.strokeStyle = PALETTE.series[i % PALETTE.series.length];
+        barCtx.strokeRect(x, midY - h / 2, w, h);
         // load arrow at right node
         if (s.P !== 0) {
           const dir = s.P > 0 ? 1 : -1;
-          ctx.strokeStyle = PALETTE.orange;
-          ctx.fillStyle = PALETTE.orange;
+          barCtx.strokeStyle = PALETTE.orange;
+          barCtx.fillStyle = PALETTE.orange;
           const ax = x + w;
-          ctx.beginPath();
-          ctx.moveTo(ax, midY);
-          ctx.lineTo(ax + dir * 22, midY);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(ax + dir * 22, midY);
-          ctx.lineTo(ax + dir * 14, midY - 4);
-          ctx.lineTo(ax + dir * 14, midY + 4);
-          ctx.fill();
+          barCtx.beginPath();
+          barCtx.moveTo(ax, midY);
+          barCtx.lineTo(ax + dir * 22, midY);
+          barCtx.stroke();
+          barCtx.beginPath();
+          barCtx.moveTo(ax + dir * 22, midY);
+          barCtx.lineTo(ax + dir * 14, midY - 4);
+          barCtx.lineTo(ax + dir * 14, midY + 4);
+          barCtx.fill();
         }
         x += w;
       });
-      ctx.fillStyle = PALETTE.muted;
-      ctx.font = "11px ui-monospace, monospace";
-      ctx.fillText("fixed", 2, midY - 34);
-      ctx.fillStyle = PALETTE.green;
-      ctx.fillText(`u_end = ${fmt(disp[disp.length - 1])}`, W - 140, 14);
+      barCtx.fillStyle = PALETTE.muted;
+      barCtx.font = "11px ui-monospace, monospace";
+      barCtx.fillText("fixed", 2, midY - 34);
+      barCtx.fillStyle = PALETTE.green;
+      barCtx.fillText(`u_end = ${fmt(disp[disp.length - 1])} ${u("length")}`, W - 160, 14);
     }
 
     function drawDiagram(res: ReturnType<typeof axialAnalysis>) {
@@ -132,7 +188,7 @@ const module: ModuleDef = {
       diag
         .setBounds({ xMin: 0, xMax: total, yMin, yMax })
         .clear()
-        .axes("position x", "N(x)", 6);
+        .axes(`Position x (${u("length")})`, `N(x) (${u("force")})`, 6);
       if (pts.length) {
         diag.fillToZero(pts, PALETTE.fillPos, PALETTE.fillNeg);
         diag.line(pts, PALETTE.cyan, 2);
@@ -146,11 +202,28 @@ const module: ModuleDef = {
         append(
           row,
           el("div", { class: "card-title" }, `Segment ${i + 1}`),
-          numberField({ label: "Length L", value: s.L, onInput: (v) => ((s.L = v), redraw()) }),
-          numberField({ label: "Area A", value: s.A, onInput: (v) => ((s.A = v), redraw()) }),
-          numberField({ label: "Modulus E", value: s.E, step: 10, onInput: (v) => ((s.E = v), redraw()) }),
+          numberField({
+            label: "Length L",
+            unit: u("length"),
+            value: s.L,
+            onInput: (v) => ((s.L = v), redraw()),
+          }),
+          numberField({
+            label: "Area A",
+            unit: u("area"),
+            value: s.A,
+            onInput: (v) => ((s.A = v), redraw()),
+          }),
+          numberField({
+            label: "Modulus E",
+            unit: u("stress"),
+            value: s.E,
+            step: 10,
+            onInput: (v) => ((s.E = v), redraw()),
+          }),
           numberField({
             label: "Load P at right node (+tension)",
+            unit: u("force"),
             value: s.P,
             onInput: (v) => ((s.P = v), redraw()),
           }),

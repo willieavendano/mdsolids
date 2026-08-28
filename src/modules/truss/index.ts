@@ -1,7 +1,55 @@
-import type { ModuleDef } from "../../core/types";
+import type { ModuleDef, ModuleContext } from "../../core/types";
 import { el, append, card, fmt, numberField, selectField } from "../../core/dom";
 import { Plot, PALETTE } from "../../core/plot";
+import { u } from "../../core/units";
 import { analyzeTruss, type Node as TNode, type Member, type SupportKind } from "./compute";
+
+/** Serializable module state (share URLs / save files / examples). */
+interface TrussState {
+  nodes: TNode[];
+  members: Member[];
+}
+
+const SUPPORT_KINDS: SupportKind[] = ["free", "pin", "roller-x", "roller-y"];
+
+function readState(raw: unknown): TrussState | null {
+  const s = raw as { nodes?: unknown; members?: unknown } | undefined;
+  if (!s || !Array.isArray(s.nodes) || s.nodes.length === 0) return null;
+  if (!Array.isArray(s.members)) return null;
+
+  const isFiniteNum = (n: unknown): n is number =>
+    typeof n === "number" && Number.isFinite(n);
+
+  const nodes: TNode[] = [];
+  const ids = new Set<string>();
+  for (const item of s.nodes) {
+    const n = item as Record<string, unknown> | null;
+    if (!n || typeof n.id !== "string" || n.id === "" || ids.has(n.id)) return null;
+    if (!isFiniteNum(n.x) || !isFiniteNum(n.y)) return null;
+    if (typeof n.support !== "string" || !SUPPORT_KINDS.includes(n.support as SupportKind))
+      return null;
+    const load = n.load as Record<string, unknown> | undefined;
+    if (!load || !isFiniteNum(load.fx) || !isFiniteNum(load.fy)) return null;
+    ids.add(n.id);
+    nodes.push({
+      id: n.id,
+      x: n.x,
+      y: n.y,
+      support: n.support as SupportKind,
+      load: { fx: load.fx, fy: load.fy },
+    });
+  }
+
+  const members: Member[] = [];
+  for (const item of s.members) {
+    const m = item as Record<string, unknown> | null;
+    if (!m || typeof m.a !== "string" || typeof m.b !== "string") return null;
+    if (!ids.has(m.a) || !ids.has(m.b)) return null;
+    members.push({ a: m.a, b: m.b });
+  }
+
+  return { nodes, members };
+}
 
 /**
  * Truss Analysis — build a 2D pin-jointed truss (nodes, supports, loads,
@@ -22,13 +70,68 @@ const module: ModuleDef = {
   description: "Member forces in a pin-jointed truss by the method of joints.",
   icon: "🔺",
 
-  mount(root) {
-    const nodes: TNode[] = [
+  examples: [
+    {
+      title: "Simple triangle truss (SI: mm, N)",
+      state: {
+        nodes: [
+          { id: "A", x: 0, y: 0, support: "pin", load: { fx: 0, fy: 0 } },
+          { id: "B", x: 4000, y: 0, support: "roller-x", load: { fx: 0, fy: 0 } },
+          { id: "C", x: 2000, y: 3000, support: "free", load: { fx: 0, fy: -10000 } },
+        ],
+        members: [
+          { a: "A", b: "B" },
+          { a: "B", b: "C" },
+          { a: "A", b: "C" },
+        ],
+      },
+    },
+    {
+      title: "5-node Warren truss (SI: mm, N)",
+      state: {
+        nodes: [
+          { id: "A", x: 0, y: 0, support: "pin", load: { fx: 0, fy: 0 } },
+          { id: "B", x: 4000, y: 0, support: "free", load: { fx: 0, fy: 0 } },
+          { id: "C", x: 8000, y: 0, support: "roller-x", load: { fx: 0, fy: 0 } },
+          { id: "D", x: 2000, y: 3000, support: "free", load: { fx: 0, fy: -20000 } },
+          { id: "E", x: 6000, y: 3000, support: "free", load: { fx: 0, fy: -20000 } },
+        ],
+        members: [
+          { a: "A", b: "B" },
+          { a: "B", b: "C" },
+          { a: "A", b: "D" },
+          { a: "D", b: "B" },
+          { a: "B", b: "E" },
+          { a: "E", b: "C" },
+          { a: "D", b: "E" },
+        ],
+      },
+    },
+    {
+      title: "Simple triangle truss (US: in, lb)",
+      state: {
+        nodes: [
+          { id: "A", x: 0, y: 0, support: "pin", load: { fx: 0, fy: 0 } },
+          { id: "B", x: 160, y: 0, support: "roller-x", load: { fx: 0, fy: 0 } },
+          { id: "C", x: 80, y: 120, support: "free", load: { fx: 0, fy: -500 } },
+        ],
+        members: [
+          { a: "A", b: "B" },
+          { a: "B", b: "C" },
+          { a: "A", b: "C" },
+        ],
+      },
+    },
+  ],
+
+  mount(root, ctx?: ModuleContext) {
+    const initial = readState(ctx?.initialState);
+    const nodes: TNode[] = initial?.nodes ?? [
       { id: "A", x: 0, y: 0, support: "pin", load: { fx: 0, fy: 0 } },
       { id: "B", x: 4, y: 0, support: "roller-x", load: { fx: 0, fy: 0 } },
       { id: "C", x: 2, y: 3, support: "free", load: { fx: 0, fy: -10 } },
     ];
-    const members: Member[] = [
+    const members: Member[] = initial?.members ?? [
       { a: "A", b: "B" },
       { a: "B", b: "C" },
       { a: "A", b: "C" },
@@ -36,8 +139,12 @@ const module: ModuleDef = {
 
     const nodeListEl = el("div", {});
     const memberListEl = el("div", {});
-    const resultsEl = el("div", {});
-    const canvas = el("canvas");
+    const resultsEl = el("div", { "aria-live": "polite" });
+    const canvas = el("canvas", {
+      role: "img",
+      "aria-label":
+        "Diagram of the truss showing nodes, supports, applied loads, and member forces colored by tension or compression",
+    });
     const plot = new Plot(canvas, 500, 420);
 
     const nextNodeId = (): string => {
@@ -49,6 +156,11 @@ const module: ModuleDef = {
     };
 
     function redraw() {
+      ctx?.reportState({
+        nodes: nodes.map((n) => ({ ...n, load: { ...n.load } })),
+        members: members.map((m) => ({ ...m })),
+      });
+
       const res = analyzeTruss(nodes, members);
 
       // ----- results -----
@@ -65,14 +177,14 @@ const module: ModuleDef = {
           el("div", { class: "result" },
             el("span", { class: "result-label" }, `${m.a}–${m.b}`),
             el("span", { class: "result-value", style: `color:${color}` },
-              `${fmt(Math.abs(f.force))} ${f.kind === "zero" ? "(zero)" : f.kind === "tension" ? "T" : "C"}`),
+              `${fmt(Math.abs(f.force))} ${u("force")} ${f.kind === "zero" ? "(zero)" : f.kind === "tension" ? "T" : "C"}`),
           ),
         );
       });
       res.reactions.forEach((r) => {
         const parts: string[] = [];
-        if (r.rx !== undefined) parts.push(`Rx=${fmt(r.rx)}`);
-        if (r.ry !== undefined) parts.push(`Ry=${fmt(r.ry)}`);
+        if (r.rx !== undefined) parts.push(`Rx=${fmt(r.rx)} ${u("force")}`);
+        if (r.ry !== undefined) parts.push(`Ry=${fmt(r.ry)} ${u("force")}`);
         rows.push(
           el("div", { class: "result" },
             el("span", { class: "result-label" }, `Reaction @ ${r.node}`),
@@ -87,7 +199,10 @@ const module: ModuleDef = {
 
     function drawTruss(res: ReturnType<typeof analyzeTruss>) {
       if (nodes.length === 0) {
-        plot.setBounds({ xMin: 0, xMax: 1, yMin: 0, yMax: 1 }).clear().axes("x", "y");
+        plot
+          .setBounds({ xMin: 0, xMax: 1, yMin: 0, yMax: 1 })
+          .clear()
+          .axes(`x (${u("length")})`, `y (${u("length")})`);
         return;
       }
       const xs = nodes.map((n) => n.x);
@@ -174,16 +289,16 @@ const module: ModuleDef = {
         append(
           row,
           el("div", { class: "card-title" }, `Node ${n.id}`),
-          numberField({ label: "x", value: n.x, onInput: (v) => ((n.x = v), redraw()) }),
-          numberField({ label: "y", value: n.y, onInput: (v) => ((n.y = v), redraw()) }),
+          numberField({ label: "x", unit: u("length"), value: n.x, onInput: (v) => ((n.x = v), redraw()) }),
+          numberField({ label: "y", unit: u("length"), value: n.y, onInput: (v) => ((n.y = v), redraw()) }),
           selectField({
             label: "Support",
             value: n.support,
             options: SUPPORTS,
             onChange: (v) => ((n.support = v as SupportKind), redraw()),
           }),
-          numberField({ label: "Load Fx", value: n.load.fx, onInput: (v) => ((n.load.fx = v), redraw()) }),
-          numberField({ label: "Load Fy", value: n.load.fy, onInput: (v) => ((n.load.fy = v), redraw()) }),
+          numberField({ label: "Load Fx", unit: u("force"), value: n.load.fx, onInput: (v) => ((n.load.fx = v), redraw()) }),
+          numberField({ label: "Load Fy", unit: u("force"), value: n.load.fy, onInput: (v) => ((n.load.fy = v), redraw()) }),
           el("button", {
             class: "btn secondary",
             onClick: () => {
