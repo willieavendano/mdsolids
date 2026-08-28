@@ -1,0 +1,18 @@
+{
+  "name": "MDSolids Web — Mechanics of Materials",
+  "short_name": "MDSolids",
+  "description": "Free, open-source mechanics-of-materials tools: sections, beams, trusses, torsion, columns, Mohr's circle, and more.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#212029",
+  "theme_color": "#212029",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

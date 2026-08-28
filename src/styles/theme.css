@@ -36,10 +36,43 @@ a:hover { text-decoration: underline; }
 
 #app { height: 100%; }
 
+/* Visible only when focused — jumps keyboard users past the nav. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 30;
+  background: var(--purple);
+  color: #12101a;
+  padding: 8px 14px;
+  border-radius: 7px;
+  font-weight: 600;
+}
+.skip-link:focus { top: 8px; text-decoration: none; }
+
 .layout {
   display: grid;
   grid-template-columns: 250px 1fr;
   height: 100vh;
+}
+
+/* ---- Mobile topbar (hidden on desktop) ---- */
+.topbar {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+}
+.hamburger {
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 1.1rem;
+  padding: 6px 12px;
+  cursor: pointer;
 }
 
 /* ---- Sidebar ---- */
@@ -105,6 +138,19 @@ a:hover { text-decoration: underline; }
   gap: 16px;
   margin-bottom: 22px;
 }
+.module-title { min-width: 200px; }
+
+/* ---- Module toolbar (examples / units / share / save / print) ---- */
+.toolbar {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.toolbar .field { margin-bottom: 0; }
+.toolbar .field-input { width: auto; padding: 7px 8px; font-size: 0.82rem; }
+.toolbar .btn { padding: 7px 11px; font-size: 0.82rem; white-space: nowrap; }
 .module-icon {
   font-size: 2rem;
   background: var(--surface);
@@ -126,8 +172,23 @@ a:hover { text-decoration: underline; }
   align-items: start;
 }
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
+  html, body { height: auto; }
+  .topbar { display: flex; }
+  .topbar .brand { margin-bottom: 0; }
+  .layout { grid-template-columns: 1fr; height: auto; }
+  /* Sidebar becomes an off-canvas drawer toggled by the hamburger. */
+  .sidebar {
+    position: fixed;
+    inset: 0 30% 0 0;
+    z-index: 20;
+    transform: translateX(-105%);
+    transition: transform 0.18s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+  .layout.nav-open .sidebar { transform: translateX(0); }
+  .content { padding: 18px 16px; }
+  .module-header { flex-wrap: wrap; }
+  .toolbar { margin-left: 0; width: 100%; }
   .module-body { grid-template-columns: 1fr; }
 }
 
@@ -233,3 +294,26 @@ td:first-child, th:first-child { text-align: left; }
 .note { color: var(--muted); font-size: 0.85rem; }
 .warn { color: var(--orange); font-size: 0.85rem; }
 .hint { color: var(--comment); font-size: 0.82rem; margin-top: 4px; }
+
+/* ---- Print: clean, light report of the current module ---- */
+@media print {
+  :root {
+    --bg: #ffffff;
+    --bg-2: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f2f2f2;
+    --border: #bbbbbb;
+    --fg: #111111;
+    --muted: #444444;
+    --comment: #555555;
+    --cyan: #111111;
+    --purple: #333333;
+  }
+  .sidebar, .topbar, .toolbar, .skip-link, button { display: none !important; }
+  .layout { display: block; height: auto; }
+  .content { overflow: visible; padding: 0; }
+  .module-body { display: block; }
+  .card { break-inside: avoid; }
+  canvas { border-color: #bbbbbb; }
+  a { color: #111111; }
+}
